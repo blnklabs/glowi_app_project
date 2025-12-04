@@ -35,7 +35,7 @@ body,
   margin: 0;
   padding: 0;
   /* Apple System Font (San Francisco) */
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: -apple-system, "SF Pro Text", "SF UI Text", system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -229,12 +229,13 @@ body,
 }
 
 /* Primary label - left side */
+.ios-list-item .ios-list-item-title,
 .ios-list-item-title {
   font-size: 17px;
   font-weight: 400;
   color: #000000;
   line-height: 22px;
-  letter-spacing: -0.41px;
+  letter-spacing: 0 !important;
   -webkit-font-smoothing: antialiased;
 }
 
