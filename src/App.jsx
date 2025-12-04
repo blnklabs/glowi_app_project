@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import Framework7 from 'framework7/lite-bundle';
-import Framework7React, { App, View, f7ready } from 'framework7-react';
+import Framework7React, { App, View, f7ready, f7 } from 'framework7-react';
 import routes from './routes.js';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -16,59 +16,74 @@ const f7params = {
   },
 };
 
-// Cleanup stuck transition states after swipe-back
-const setupTransitionCleanup = () => {
+// Comprehensive cleanup after swipe-back
+const setupSwipeBackFix = () => {
   f7ready((f7) => {
     const view = f7.views.main;
     if (!view) return;
 
-    // Listen for swipe-back events and force cleanup
-    view.on('swipebackMove', () => {
-      // Track that a swipe is in progress
-      window.__f7SwipeInProgress = true;
+    // Use swipebackAfterChange - fires AFTER swipe-back animation completes
+    view.on('swipebackAfterChange', () => {
+      // Small delay to ensure F7 has finished its internal updates
+      setTimeout(() => {
+        forceCleanupAfterSwipe(view);
+      }, 50);
     });
 
-    view.on('swipebackBeforeChange', () => {
-      // Swipe will complete - cleanup after animation
+    // Also cleanup after reset (cancelled swipe)
+    view.on('swipebackAfterReset', () => {
       setTimeout(() => {
-        cleanupTransitionClasses();
-        window.__f7SwipeInProgress = false;
-      }, 400);
-    });
-
-    view.on('swipebackBeforeReset', () => {
-      // Swipe was cancelled - cleanup
-      setTimeout(() => {
-        cleanupTransitionClasses();
-        window.__f7SwipeInProgress = false;
-      }, 400);
+        forceCleanupAfterSwipe(view);
+      }, 50);
     });
   });
 };
 
-// Force remove stuck transition classes
-const cleanupTransitionClasses = () => {
+// Force complete cleanup after swipe
+const forceCleanupAfterSwipe = (view) => {
+  // 1. Remove all transition classes from pages
   const transitionClasses = [
     'page-transitioning',
     'page-transitioning-swipeback',
+    'page-next',
     'router-transition-forward',
     'router-transition-backward',
   ];
 
   document.querySelectorAll('.page').forEach((page) => {
     transitionClasses.forEach((cls) => page.classList.remove(cls));
+    // Reset any inline transforms
+    page.style.transform = '';
   });
 
-  // Also remove page-opacity-effect if it exists
+  // 2. Remove page-opacity-effect elements entirely
   document.querySelectorAll('.page-opacity-effect').forEach((el) => {
-    el.style.opacity = '0';
-    el.style.pointerEvents = 'none';
+    el.remove();
   });
+
+  // 3. Ensure current page has correct classes
+  const currentPage = document.querySelector('.page-current');
+  if (currentPage) {
+    currentPage.classList.remove('page-previous');
+    currentPage.style.transform = '';
+  }
+
+  // 4. Remove any leftover "previous" pages that shouldn't exist
+  document.querySelectorAll('.page-previous').forEach((page) => {
+    // If this page is not in the router history, it's stale - hide it
+    page.style.transform = 'translate3d(-100%, 0, 0)';
+    page.setAttribute('aria-hidden', 'true');
+  });
+
+  // 5. Clear the view's transitioning state
+  if (view.router) {
+    view.router.transitioning = false;
+  }
 };
 
 export default function MyApp() {
   useEffect(() => {
-    setupTransitionCleanup();
+    setupSwipeBackFix();
   }, []);
 
   return (
