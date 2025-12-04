@@ -12,6 +12,10 @@
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 
+  /* Override F7 safe area variables with Despia values */
+  --f7-safe-area-top: var(--safe-area-top);
+  --f7-safe-area-bottom: var(--safe-area-bottom);
+
   /* Framework7 iOS typography overrides for Apple-native sizing */
   --f7-font-size: 17px;
   --f7-list-item-title-font-size: 17px;
