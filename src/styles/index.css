@@ -45,6 +45,14 @@ body,
 }
 
 /* ============================================
+   Fix for F7 page-opacity-effect blocking touches
+   after swipe-back navigation completes
+   ============================================ */
+.page-opacity-effect {
+  pointer-events: none !important;
+}
+
+/* ============================================
    Theme Transition Animations
    ============================================
    Smooth color transitions for dark/light mode
