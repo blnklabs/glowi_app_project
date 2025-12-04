@@ -1,13 +1,16 @@
 import { Page, Navbar, NavLeft, NavTitle, Link, Icon, BlockTitle, Block, Range } from 'framework7-react';
 import { IosListGroup, IosListItem } from '../components/IosList';
+import { useTheme } from '../context/ThemeContext';
 
 export default function AccountPreferencesPage() {
+  const { isDarkMode, toggleDarkMode } = useTheme();
+
   return (
     <Page className="ios-list-page">
       <Navbar>
         <NavLeft>
           <Link back className="flex items-center">
-            <Icon f7="chevron_left" style={{ fontSize: '24px', color: '#000', position: 'relative', left: '-2px' }} />
+            <Icon f7="chevron_left" style={{ fontSize: '24px', position: 'relative', left: '-2px' }} />
           </Link>
         </NavLeft>
         <NavTitle>Preferences</NavTitle>
@@ -15,7 +18,12 @@ export default function AccountPreferencesPage() {
 
       {/* Display Section */}
       <IosListGroup header="Display">
-        <IosListItem title="Dark Mode" toggle />
+        <IosListItem
+          title="Dark Mode"
+          toggle
+          toggleChecked={isDarkMode}
+          onToggleChange={toggleDarkMode}
+        />
         <IosListItem title="Reduce Motion" toggle />
         <IosListItem link="#" title="Language" value="English" />
       </IosListGroup>
@@ -28,8 +36,8 @@ export default function AccountPreferencesPage() {
 
       {/* Text Size Section */}
       <BlockTitle>Text Size</BlockTitle>
-      <Block strong inset className="flex items-center gap-3 bg-white rounded-[10px] mx-4">
-        <span className="text-sm text-gray-500">Small</span>
+      <Block strong inset className="flex items-center gap-3 rounded-[10px] mx-4">
+        <span className="text-sm">Small</span>
         <Range
           className="flex-1"
           min={12}
@@ -38,7 +46,7 @@ export default function AccountPreferencesPage() {
           value={16}
           label={true}
         />
-        <span className="text-sm text-gray-500">Large</span>
+        <span className="text-sm">Large</span>
       </Block>
 
       {/* Personalization Section */}

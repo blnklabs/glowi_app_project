@@ -44,6 +44,39 @@ body,
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ============================================
+   Theme Transition Animations
+   ============================================
+   Smooth color transitions for dark/light mode
+   ============================================ */
+html,
+.page,
+.page-content,
+.navbar,
+.navbar-bg,
+.ios-list-page,
+.ios-list-card,
+.ios-list-item,
+.ios-list-item-title,
+.ios-list-item-value,
+.ios-list-item-subtitle,
+.ios-list-item-input,
+.ios-list-section-header,
+.ios-list-section-footer,
+.ios-tabbar,
+.ios-tabbar-icon,
+.ios-tabbar-label,
+.ios-button,
+.block,
+.block-title,
+.navbar .title,
+.navbar .title-large-text,
+.navbar .icon,
+.navbar .link i,
+.ios-list-item-right::after {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
 /* Apple iOS body text base style - 17px standard */
 .page-content,
 .block,
@@ -132,6 +165,12 @@ body,
 /* Navbar title fade transition - only for MainView */
 .main-view-page .title-large-text {
   animation: fadeIn 0.3s ease;
+}
+
+/* Default navbar icon color */
+.navbar .icon,
+.navbar .link i {
+  color: #000000;
 }
 
 @keyframes fadeIn {
@@ -403,4 +442,161 @@ textarea {
 
 .ios-list-footer-link:active {
   opacity: 0.6;
+}
+
+/* ============================================
+   Dark Mode Styles
+   ============================================
+   iOS-native dark mode colors based on Apple HIG
+   ============================================ */
+
+/* Dark mode root variables */
+html.dark {
+  --f7-bars-bg-color: rgba(0, 0, 0, 0.85);
+  --f7-bars-text-color: #ffffff;
+  --f7-navbar-bg-color: rgba(0, 0, 0, 0.85);
+  --f7-navbar-link-color: #007AFF;
+  --f7-navbar-text-color: #ffffff;
+  --f7-page-bg-color: #000000;
+}
+
+/* Page background */
+html.dark .ios-list-page,
+html.dark .page-content {
+  background-color: #000000;
+}
+
+/* List card background */
+html.dark .ios-list-card {
+  background-color: #1C1C1E;
+}
+
+/* List item background */
+html.dark .ios-list-item {
+  background-color: #1C1C1E;
+}
+
+/* List item active state */
+html.dark .ios-list-item:active {
+  background-color: #2C2C2E;
+}
+
+/* List item separator */
+html.dark .ios-list-item:not(:last-child)::after {
+  background-color: #38383A;
+}
+
+/* List item title - white text */
+html.dark .ios-list-item .ios-list-item-title,
+html.dark .ios-list-item-title {
+  color: #FFFFFF;
+}
+
+/* List item value - gray text */
+html.dark .ios-list-item-value {
+  color: #8E8E93;
+}
+
+/* List item subtitle */
+html.dark .ios-list-item-subtitle {
+  color: #8E8E93;
+}
+
+/* Section header - gray text */
+html.dark .ios-list-section-header {
+  color: #8E8E93;
+}
+
+/* Section footer */
+html.dark .ios-list-section-footer {
+  color: #8E8E93;
+}
+
+/* Chevron icon - darker gray */
+html.dark .ios-list-item-link .ios-list-item-right::after {
+  color: #48484A;
+}
+
+/* Input field text */
+html.dark .ios-list-item-input {
+  color: #FFFFFF;
+}
+
+/* Input placeholder */
+html.dark .ios-list-item-input::placeholder {
+  color: #636366;
+}
+
+/* Navbar styling */
+html.dark .navbar {
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+html.dark .navbar .title,
+html.dark .navbar .title-large-text {
+  color: #FFFFFF !important;
+}
+
+/* Back button and navbar icons */
+html.dark .navbar .link i,
+html.dark .navbar .icon {
+  color: #FFFFFF !important;
+}
+
+/* Tab bar */
+html.dark .ios-tabbar {
+  background-color: rgba(30, 30, 30, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* Tab bar inactive color */
+html.dark .ios-tabbar-icon,
+html.dark .ios-tabbar-label {
+  color: #8E8E93;
+}
+
+/* Destructive text stays red */
+html.dark .ios-list-item-destructive .ios-list-item-title {
+  color: #FF453A;
+}
+
+/* Block title (like "Text Size" header) */
+html.dark .block-title {
+  color: #8E8E93;
+}
+
+/* Block container */
+html.dark .block.block-strong {
+  background-color: #1C1C1E;
+}
+
+/* Range slider track */
+html.dark .range-bar {
+  background-color: #48484A;
+}
+
+/* Text colors for misc elements */
+html.dark .text-gray-500,
+html.dark .text-gray-600 {
+  color: #8E8E93 !important;
+}
+
+/* Main view page background */
+html.dark .main-view-page {
+  background-color: #000000;
+}
+
+html.dark .main-view-page .page-content {
+  background-color: #000000;
+}
+
+/* iOS button in dark mode */
+html.dark .ios-button {
+  background-color: #0A84FF;
+}
+
+/* Debug console - keep dark regardless of mode */
+html.dark .debug-console {
+  background-color: #1a1a1a;
 }

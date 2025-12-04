@@ -75,7 +75,7 @@ export default function MainView() {
       <Navbar large title={activeTab === 'home' ? 'Home' : 'Explore'} titleLargeKey={titleKey}>
         <NavRight>
           <Link href="/account/" iconOnly>
-            <Icon f7="person_crop_circle" style={{ fontSize: '24px', color: '#000' }} />
+            <Icon f7="person_crop_circle" style={{ fontSize: '24px' }} />
           </Link>
         </NavRight>
       </Navbar>
