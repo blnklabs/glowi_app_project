@@ -74,7 +74,7 @@ html,
 .navbar .icon,
 .navbar .link i,
 .ios-list-item-right::after {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, visibility 0.3s ease;
 }
 
 /* Apple iOS body text base style - 17px standard */
@@ -140,6 +140,11 @@ html,
 }
 
 /* Tab fade transition */
+.tabs {
+  position: relative;
+  height: 100%;
+}
+
 .tabs .tab {
   display: block !important;
   position: absolute;
@@ -148,18 +153,13 @@ html,
   right: 0;
   bottom: 0;
   opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .tabs .tab.tab-active {
   opacity: 1;
-  pointer-events: auto;
-}
-
-.tabs {
-  position: relative;
-  height: 100%;
+  visibility: visible;
 }
 
 /* Navbar title fade transition - only for MainView */
@@ -545,7 +545,7 @@ html.dark .navbar .icon {
 
 /* Tab bar */
 html.dark .ios-tabbar {
-  background-color: rgba(30, 30, 30, 0.72);
+  background-color: rgba(0, 0, 0, 0.72);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
