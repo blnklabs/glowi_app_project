@@ -14,7 +14,9 @@ export default function DebugOverlay() {
     historyLength: 0,
     currentUrl: '/',
     pageClasses: [],
+    tabsClasses: '',
     hasOpacityEffect: false,
+    pageCount: 0,
     eventLog: [],
   });
 
@@ -32,17 +34,30 @@ export default function DebugOverlay() {
         if (!view) return;
 
         const router = view.router;
-        const pages = document.querySelectorAll('.page');
+        const pages = document.querySelectorAll('.view-main .page');
         const pageClasses = [];
 
         pages.forEach((page, i) => {
           const classList = Array.from(page.classList).filter(c => 
-            c.includes('page-') || c.includes('transitioning')
+            c.includes('page-') || c.includes('transitioning') || c.includes('swipeback')
           );
-          pageClasses.push(`P${i}: ${classList.join(' ')}`);
+          // Also get z-index
+          const zIndex = window.getComputedStyle(page).zIndex;
+          pageClasses.push(`P${i}(z:${zIndex}): ${classList.join(' ')}`);
         });
 
+        // Get .tabs element info
+        const tabsEl = document.querySelector('.tabs');
+        const tabsClasses = tabsEl 
+          ? Array.from(tabsEl.classList).join(' ')
+          : 'not found';
+
+        // Get active tab info
+        const activeTab = document.querySelector('.tab.tab-active');
+        const activeTabId = activeTab ? activeTab.id : 'none';
+
         const hasOpacityEffect = !!document.querySelector('.page-opacity-effect');
+        const pageCount = pages.length;
 
         setDebugState(prev => {
           const newLog = eventName 
@@ -56,7 +71,9 @@ export default function DebugOverlay() {
             historyLength: router?.history?.length || 0,
             currentUrl: router?.currentRoute?.url || '/',
             pageClasses,
+            tabsClasses: `${tabsClasses} | active: ${activeTabId}`,
             hasOpacityEffect,
+            pageCount,
             eventLog: newLog,
           };
         });
@@ -152,12 +169,15 @@ export default function DebugOverlay() {
     historyLength, 
     currentUrl, 
     pageClasses, 
+    tabsClasses,
     hasOpacityEffect,
+    pageCount,
     eventLog 
   } = debugState;
 
-  // Status indicators
+  // Status indicators - also check if multiple pages exist (potential z-index issue)
   const isBlocked = routerTransitioning || !allowPageChange || hasOpacityEffect;
+  const hasMultiplePages = pageCount > 1;
 
   return (
     <div style={{
@@ -231,18 +251,37 @@ export default function DebugOverlay() {
         <span style={{ color: '#888' }}> (hist: {historyLength})</span>
       </div>
 
-      {/* Page Classes */}
+      {/* Page Count Warning */}
+      {hasMultiplePages && (
+        <div style={{ 
+          marginBottom: '6px',
+          color: '#f93',
+          fontWeight: 'bold',
+        }}>
+          ⚠️ {pageCount} pages in DOM (may cause z-index issues)
+        </div>
+      )}
+
+      {/* Page Classes with z-index */}
       <div style={{ marginBottom: '6px' }}>
         <div style={{ color: '#888', marginBottom: '2px' }}>Pages:</div>
         {pageClasses.map((pc, i) => (
           <div key={i} style={{ 
-            color: pc.includes('transitioning') ? '#f93' : '#aaa',
+            color: pc.includes('transitioning') || pc.includes('swipeback') ? '#f93' : 
+                   pc.includes('page-previous') ? '#f66' : 
+                   pc.includes('page-current') ? '#0f0' : '#aaa',
             fontSize: '9px',
             marginLeft: '8px',
           }}>
             {pc}
           </div>
         ))}
+      </div>
+
+      {/* Tabs Info */}
+      <div style={{ marginBottom: '6px' }}>
+        <span style={{ color: '#888' }}>Tabs:</span>{' '}
+        <span style={{ color: '#0af', fontSize: '9px' }}>{tabsClasses}</span>
       </div>
 
       {/* Event Log */}
