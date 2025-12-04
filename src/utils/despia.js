@@ -201,6 +201,37 @@ export const initSafeAreas = () => {
 
 export const despia = safeDespia;
 
+// ============================================================================
+// Navigation Helpers
+// ============================================================================
+
+/**
+ * Register a callback for native back navigation events.
+ * Despia's native swipe-back gesture may trigger popstate or a custom event.
+ * This function sets up listeners for both possibilities.
+ * 
+ * @param {Function} callback - Function to call when back gesture is detected
+ * @returns {Function} Cleanup function to remove listeners
+ */
+export const onNativeBackGesture = (callback) => {
+  if (typeof window === 'undefined') return () => {};
+  
+  // Listen for popstate events (triggered by history.back())
+  const handlePopState = (event) => {
+    // Only handle if in Despia environment
+    if (isDespia()) {
+      callback(event);
+    }
+  };
+  
+  window.addEventListener('popstate', handlePopState);
+  
+  // Return cleanup function
+  return () => {
+    window.removeEventListener('popstate', handlePopState);
+  };
+};
+
 // Default export with all utilities
 export default {
   // Environment
@@ -216,6 +247,8 @@ export default {
   errorHaptic,
   // Safe Areas
   initSafeAreas,
+  // Navigation
+  onNativeBackGesture,
   // Raw SDK
   despia: safeDespia,
 };
