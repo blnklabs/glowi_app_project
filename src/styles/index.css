@@ -48,12 +48,11 @@ body,
    Theme Transition Animations
    ============================================
    Smooth color transitions for dark/light mode
+   NOTE: Do NOT add transitions to .page, .page-content,
+   .navbar, .navbar-bg as they interfere with F7's
+   page transition animationend detection
    ============================================ */
 html,
-.page,
-.page-content,
-.navbar,
-.navbar-bg,
 .ios-list-page,
 .ios-list-card,
 .ios-list-item,
@@ -74,7 +73,7 @@ html,
 .navbar .icon,
 .navbar .link i,
 .ios-list-item-right::after {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, visibility 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 /* Apple iOS body text base style - 17px standard */
