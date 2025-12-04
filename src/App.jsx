@@ -19,174 +19,164 @@ const f7params = {
 };
 
 /**
- * Setup navigation handling for Despia native environment.
+ * Swipe-back fix that doesn't rely on F7 events (which don't fire properly).
  * 
  * Strategy:
- * - DISABLE F7's built-in swipe-back (iosSwipeBack={false})
- * - Let Despia's native swipe gesture trigger popstate/history.back()
- * - Listen for popstate and call F7's router.back() directly
- * - F7's router.back() handles all state cleanup internally (no transitionend dependency)
- */
-const setupDespiaNavigation = () => {
-  f7ready((f7) => {
-    const view = f7.views.main;
-    if (!view) return;
-
-    // Only setup if running in Despia native environment
-    if (!isDespia()) return;
-
-    // Flag to prevent double-back navigation
-    let isNavigatingBack = false;
-
-    // Listen for popstate events (Despia's native swipe triggers history.back())
-    const handlePopState = () => {
-      if (isNavigatingBack) return;
-      
-      const router = view.router;
-      if (!router) return;
-
-      // Check if we have history to go back
-      if (router.history.length > 1) {
-        isNavigatingBack = true;
-        
-        // Use F7's router.back() which handles cleanup properly
-        router.back({
-          animate: true,
-          force: false,
-        });
-
-        // Reset flag after navigation completes
-        setTimeout(() => {
-          isNavigatingBack = false;
-        }, 400);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    // Cleanup on unmount
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  });
-};
-
-/**
- * Fallback swipe-back fix for when F7's swipe-back is enabled.
- * Uses multiple cleanup triggers to ensure state is properly reset.
+ * 1. Detect swipe start via swipebackMove
+ * 2. Detect swipe end via touchend (since F7's swipebackAfterChange never fires)
+ * 3. Wait for animation (350ms) then run cleanup
+ * 4. Force cleanup on any tap if navigation is still blocked
  */
 const setupSwipeBackFix = () => {
   f7ready((f7) => {
     const view = f7.views.main;
     if (!view) return;
 
-    // Skip if in Despia - we use the native navigation approach instead
-    if (isDespia()) return;
+    // Track swipe-back state
+    let swipeBackStarted = false;
+    let cleanupScheduled = false;
 
-    // Track when swipe-back gesture starts
-    let swipeBackInProgress = false;
-
+    // Detect when swipe-back gesture starts
     view.on('swipebackMove', () => {
-      swipeBackInProgress = true;
+      swipeBackStarted = true;
     });
 
-    // After swipe-back will complete, wait for animation then run cleanup
-    view.on('swipebackAfterChange', () => {
-      if (swipeBackInProgress) {
-        swipeBackInProgress = false;
-        // Wait 350ms (F7's default transition duration) for animation to finish
-        setTimeout(() => {
-          cleanupAfterSwipeBack(view);
-        }, 350);
-      }
-    });
-
-    // Reset tracking if swipe is cancelled
-    view.on('swipebackAfterReset', () => {
-      swipeBackInProgress = false;
-    });
-
-    // Also cleanup on touchend after swipe detection (fallback trigger)
+    // PRIMARY TRIGGER: touchend after swipe detected
+    // (F7's swipebackAfterChange never fires, so we use touchend instead)
     document.addEventListener('touchend', () => {
-      if (swipeBackInProgress) {
-        // Wait one frame, then check if cleanup is needed
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            if (document.querySelector('.page-transitioning-swipeback')) {
-              cleanupAfterSwipeBack(view);
-            }
-            swipeBackInProgress = false;
-          }, 400);
-        });
+      if (swipeBackStarted && !cleanupScheduled) {
+        cleanupScheduled = true;
+        
+        // Wait for animation to complete (350ms F7 default + buffer)
+        setTimeout(() => {
+          // Check if cleanup is actually needed
+          if (isNavigationBlocked(view)) {
+            console.log('[SwipeFix] Running cleanup after touchend');
+            cleanupAfterSwipeBack(view);
+          }
+          swipeBackStarted = false;
+          cleanupScheduled = false;
+        }, 400);
       }
     }, { passive: true });
+
+    // FALLBACK TRIGGER: Force cleanup on any tap if navigation is blocked
+    // This catches cases where the swipe cleanup didn't work
+    document.addEventListener('touchstart', () => {
+      if (!swipeBackStarted && !cleanupScheduled && isNavigationBlocked(view)) {
+        console.log('[SwipeFix] Force cleanup on tap (navigation was blocked)');
+        cleanupAfterSwipeBack(view);
+      }
+    }, { passive: true });
+
+    // SAFETY NET: Periodic check every 2 seconds
+    // If navigation is blocked for too long, force cleanup
+    setInterval(() => {
+      if (!swipeBackStarted && !cleanupScheduled && isNavigationBlocked(view)) {
+        console.log('[SwipeFix] Periodic cleanup (navigation was stuck)');
+        cleanupAfterSwipeBack(view);
+      }
+    }, 2000);
   });
 };
 
 /**
- * Manual cleanup that mimics what F7 would do if transitionend had fired.
- * Runs in this specific order to avoid state corruption.
+ * Check if navigation is currently blocked
+ */
+const isNavigationBlocked = (view) => {
+  const router = view?.router;
+  if (!router) return false;
+
+  // Check for blocking conditions
+  const hasOpacityEffect = !!document.querySelector('.page-opacity-effect');
+  const hasTransitioningPages = !!document.querySelector('.page-transitioning-swipeback');
+  const allowPageChange = router.allowPageChange !== false;
+  const transitioning = router.transitioning === true;
+
+  return hasOpacityEffect || hasTransitioningPages || !allowPageChange || transitioning;
+};
+
+/**
+ * Manual cleanup that fixes the corrupted state after swipe-back.
+ * 
+ * Based on debug analysis, after a stuck swipe:
+ * - P0 (destination page): has page-current + transitioning classes
+ * - P1 (dismissed page): has page-next + transitioning classes  
+ * - Both need transitioning classes removed
+ * - P1 needs to be removed from DOM
+ * - Router state needs reset
  */
 const cleanupAfterSwipeBack = (view) => {
-  // 1. Remove the stale page (the one being dismissed)
-  // This is the page with page-transitioning-swipeback but NOT page-previous
-  const stalePage = document.querySelector('.page-transitioning-swipeback:not(.page-previous)');
-  if (stalePage) {
-    stalePage.remove();
-  }
+  console.log('[SwipeFix] Starting cleanup...');
 
-  // 2. Promote page-previous to page-current
-  const previousPage = document.querySelector('.page-previous');
-  if (previousPage) {
-    previousPage.classList.remove(
-      'page-previous',
-      'page-transitioning',
-      'page-transitioning-swipeback'
-    );
-    previousPage.classList.add('page-current');
-    previousPage.style.transform = '';
-    previousPage.style.opacity = '';
-  }
-
-  // 3. Remove page-opacity-effect elements (these block touch events)
+  // 1. Remove page-opacity-effect elements (these block all touch events!)
   document.querySelectorAll('.page-opacity-effect').forEach((el) => {
+    console.log('[SwipeFix] Removing page-opacity-effect');
     el.remove();
   });
 
-  // 4. Clear transition classes from all remaining pages
+  // 2. Get all pages and identify which to keep vs remove
+  const pages = Array.from(document.querySelectorAll('.view-main .page'));
+  
+  if (pages.length > 1) {
+    // The page we're going BACK to is the first/underlying page (index 0)
+    // The page being DISMISSED is the top page (last index)
+    const destinationPage = pages[0];
+    const dismissedPages = pages.slice(1);
+
+    // Remove all dismissed pages
+    dismissedPages.forEach((page, i) => {
+      console.log(`[SwipeFix] Removing dismissed page ${i + 1}`);
+      page.remove();
+    });
+
+    // Fix the destination page
+    destinationPage.classList.remove(
+      'page-previous',
+      'page-next',
+      'page-transitioning',
+      'page-transitioning-swipeback'
+    );
+    destinationPage.classList.add('page-current');
+    destinationPage.style.transform = '';
+    destinationPage.style.opacity = '';
+  }
+
+  // 3. Clear transition classes from any remaining pages (safety)
   document.querySelectorAll('.page').forEach((page) => {
     page.classList.remove(
       'page-transitioning',
       'page-transitioning-swipeback',
       'page-next'
     );
+    page.style.transform = '';
   });
 
-  // 5. Reset router state so it accepts new navigation
+  // 4. Reset router state
   if (view.router) {
     view.router.transitioning = false;
     view.router.allowPageChange = true;
+    
+    // Also update history to match actual state (pop the dismissed page)
+    if (view.router.history.length > 1) {
+      view.router.history.pop();
+      console.log('[SwipeFix] Popped history, new length:', view.router.history.length);
+    }
   }
 
-  // 6. Clear view-level transition classes
+  // 5. Clear view-level transition classes
   if (view.el) {
     view.el.classList.remove('router-transition-forward', 'router-transition-backward');
   }
+
+  console.log('[SwipeFix] Cleanup complete');
 };
 
 export default function MyApp() {
   useEffect(() => {
-    // Setup Despia-specific navigation (popstate handler)
-    setupDespiaNavigation();
-    
-    // Setup fallback swipe-back fix for non-Despia environments
+    // Setup swipe-back fix (works for both Despia and web environments)
     setupSwipeBackFix();
   }, []);
-
-  // Determine if we should use F7's swipe-back or Despia's native gesture
-  // In Despia: disable F7 swipe, let Despia handle it via popstate
-  // In web: enable F7 swipe with cleanup fallback
-  const useF7SwipeBack = typeof window !== 'undefined' ? !isDespia() : true;
 
   return (
     <ThemeProvider>
@@ -194,7 +184,7 @@ export default function MyApp() {
         <View
           main
           url="/"
-          iosSwipeBack={useF7SwipeBack}
+          iosSwipeBack={true}
           browserHistory={false}
         />
         {/* Debug overlay - remove after fixing navigation issues */}
