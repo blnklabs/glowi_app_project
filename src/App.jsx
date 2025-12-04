@@ -24,8 +24,7 @@ const f7params = {
  * Strategy:
  * 1. Detect swipe start via swipebackMove
  * 2. Detect swipe end via touchend (since F7's swipebackAfterChange never fires)
- * 3. Wait for animation (350ms) then run cleanup
- * 4. Force cleanup on any tap if navigation is still blocked
+ * 3. Wait for animation (350ms) then run cleanup ONLY if swipe was detected
  */
 const setupSwipeBackFix = () => {
   f7ready((f7) => {
@@ -35,21 +34,26 @@ const setupSwipeBackFix = () => {
     // Track swipe-back state
     let swipeBackStarted = false;
     let cleanupScheduled = false;
+    let swipeBackTimestamp = 0;
 
     // Detect when swipe-back gesture starts
     view.on('swipebackMove', () => {
       swipeBackStarted = true;
+      swipeBackTimestamp = Date.now();
     });
 
     // PRIMARY TRIGGER: touchend after swipe detected
     // (F7's swipebackAfterChange never fires, so we use touchend instead)
     document.addEventListener('touchend', () => {
-      if (swipeBackStarted && !cleanupScheduled) {
+      // Only run if swipe-back was recently detected (within last 2 seconds)
+      const timeSinceSwipe = Date.now() - swipeBackTimestamp;
+      
+      if (swipeBackStarted && !cleanupScheduled && timeSinceSwipe < 2000) {
         cleanupScheduled = true;
         
         // Wait for animation to complete (350ms F7 default + buffer)
         setTimeout(() => {
-          // Check if cleanup is actually needed
+          // Double-check that cleanup is actually needed
           if (isNavigationBlocked(view)) {
             console.log('[SwipeFix] Running cleanup after touchend');
             cleanupAfterSwipeBack(view);
@@ -60,23 +64,16 @@ const setupSwipeBackFix = () => {
       }
     }, { passive: true });
 
-    // FALLBACK TRIGGER: Force cleanup on any tap if navigation is blocked
-    // This catches cases where the swipe cleanup didn't work
-    document.addEventListener('touchstart', () => {
-      if (!swipeBackStarted && !cleanupScheduled && isNavigationBlocked(view)) {
-        console.log('[SwipeFix] Force cleanup on tap (navigation was blocked)');
-        cleanupAfterSwipeBack(view);
-      }
-    }, { passive: true });
-
-    // SAFETY NET: Periodic check every 2 seconds
-    // If navigation is blocked for too long, force cleanup
-    setInterval(() => {
-      if (!swipeBackStarted && !cleanupScheduled && isNavigationBlocked(view)) {
-        console.log('[SwipeFix] Periodic cleanup (navigation was stuck)');
-        cleanupAfterSwipeBack(view);
-      }
-    }, 2000);
+    // SAFETY NET: Check after 3 seconds if swipe was started but cleanup never ran
+    // This catches edge cases without being too aggressive
+    view.on('swipebackMove', () => {
+      setTimeout(() => {
+        if (isNavigationBlocked(view)) {
+          console.log('[SwipeFix] Safety net cleanup (3s after swipe)');
+          cleanupAfterSwipeBack(view);
+        }
+      }, 3000);
+    });
   });
 };
 
