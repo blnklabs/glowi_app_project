@@ -1,0 +1,361 @@
+@import 'framework7/css/bundle';
+@import 'tailwindcss';
+
+/* ============================================
+   Despia Safe Area CSS Variables
+   ============================================
+   When running in Despia native runtime, these
+   variables are automatically injected.
+   For web fallback, we use env() with defaults.
+   ============================================ */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Ensure full viewport height for Framework7 */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* iOS TabBar - pixel-perfect recreation */
+.ios-tabbar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  /* 83px total: 49px tab bar + safe area for home indicator devices */
+  /* Uses Despia safe area variable (injected by runtime or CSS fallback) */
+  height: calc(83px + var(--safe-area-bottom));
+  min-height: 83px;
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start; /* Align items to top so we control spacing precisely */
+  padding-top: 6px; /* Space from top border to icons */
+  padding-bottom: var(--safe-area-bottom); /* Safe area for home indicator */
+  box-sizing: border-box;
+  z-index: 100;
+}
+
+.ios-tabbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios-tabbar-icon {
+  width: 25px; /* iOS standard icon size */
+  height: 25px;
+  flex-shrink: 0;
+}
+
+.ios-tabbar-label {
+  font-size: 10px; /* iOS tab bar label size */
+  font-weight: 500; /* Medium weight */
+  line-height: 1;
+  margin-top: 3px; /* Precise gap between icon and label */
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ensure page content doesn't overlap toolbar */
+.page-content {
+  padding-bottom: 70px !important;
+}
+
+/* Tab fade transition */
+.tabs .tab {
+  display: block !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.tabs .tab.tab-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tabs {
+  position: relative;
+  height: 100%;
+}
+
+/* Navbar title fade transition - only for MainView */
+.main-view-page .title-large-text {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* iOS-style button with continuous corners (squircle approximation) */
+.ios-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 50px;
+  background-color: #007AFF;
+  color: white;
+  font-size: 17px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  /* iOS uses ~24% of height for continuous corners on buttons this size */
+  border-radius: 12px;
+  /* Smooth anti-aliasing for continuous corner illusion */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: opacity 0.15s ease;
+}
+
+.ios-button:active {
+  opacity: 0.7;
+}
+
+/* ============================================
+   iOS List Styles - Pixel-perfect recreation
+   ============================================ */
+
+/* Page background - iOS grouped table background */
+.ios-list-page {
+  background-color: #F2F2F7;
+}
+
+/* List group container */
+.ios-list-group {
+  margin: 0 16px 20px 16px;
+}
+
+/* First list group - add top margin */
+.ios-list-group:first-of-type {
+  margin-top: 20px;
+}
+
+/* List card - the white rounded container */
+.ios-list-card {
+  background-color: #FFFFFF;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+/* Individual list item */
+.ios-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 50px;
+  padding: 11px 16px;
+  background-color: #FFFFFF;
+  position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios-list-item:active {
+  background-color: #E5E5EA;
+}
+
+/* Separator line - indented from left */
+.ios-list-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 0;
+  height: 0.33px;
+  background-color: rgb(231, 231, 232);
+}
+
+/* Left side content */
+.ios-list-item-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Primary label - left side */
+.ios-list-item-title {
+  font-size: 16px;
+  font-weight: 400;
+  color: #000000;
+  line-height: 22px;
+  letter-spacing: -0.41px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtitle/footer text under title */
+.ios-list-item-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: #8E8E93;
+  line-height: 18px;
+  letter-spacing: -0.08px;
+  margin-top: 2px;
+}
+
+/* Right side content container */
+.ios-list-item-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Secondary/value text - right side */
+.ios-list-item-value {
+  font-size: 17px;
+  font-weight: 400;
+  color: #8E8E93;
+  line-height: 22px;
+  letter-spacing: -0.41px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Chevron icon */
+.ios-list-chevron {
+  width: 14px;
+  height: 14px;
+  color: #C7C7CC;
+  flex-shrink: 0;
+}
+
+/* Section header text */
+.ios-list-section-header {
+  font-size: 13px;
+  font-weight: 400;
+  color: #6D6D72;
+  line-height: 18px;
+  letter-spacing: -0.08px;
+  text-transform: uppercase;
+  padding: 0 16px;
+  margin-bottom: 7px;
+}
+
+/* Section footer text */
+.ios-list-section-footer {
+  font-size: 13px;
+  font-weight: 400;
+  color: #6D6D72;
+  line-height: 18px;
+  letter-spacing: -0.08px;
+  padding: 8px 16px 0 16px;
+}
+
+/* List item with icon on left */
+.ios-list-item-icon {
+  width: 29px;
+  height: 29px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.ios-list-item-icon svg {
+  width: 17px;
+  height: 17px;
+  color: white;
+}
+
+/* Toggle styling override for iOS look */
+.ios-list-item .toggle {
+  flex-shrink: 0;
+}
+
+/* Link text style (like "Set Up") */
+.ios-list-item-link-text {
+  font-size: 17px;
+  font-weight: 400;
+  color: #8E8E93;
+  line-height: 22px;
+  letter-spacing: -0.41px;
+}
+
+/* Destructive/red button style */
+.ios-list-item-destructive .ios-list-item-title {
+  color: #FF3B30;
+}
+
+/* Input field in list item */
+.ios-list-item-input {
+  flex: 1;
+  text-align: right;
+  font-size: 16px;
+  font-weight: 400;
+  color: #000000;
+  line-height: 22px;
+  letter-spacing: -0.41px;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.ios-list-item-input::placeholder {
+  color: #C7C7CC;
+}
+
+/* Global input font size */
+input[type='text'],
+input[type='password'],
+input[type='search'],
+input[type='email'],
+input[type='tel'],
+input[type='url'],
+input[type='date'],
+input[type='month'],
+input[type='datetime-local'],
+input[type='time'],
+input[type='number'],
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* Centered text link (like "See how your data is managed...") */
+.ios-list-footer-link {
+  font-size: 13px;
+  font-weight: 400;
+  color: #007AFF;
+  line-height: 18px;
+  letter-spacing: -0.08px;
+  text-align: center;
+  padding: 16px;
+  cursor: pointer;
+}
+
+.ios-list-footer-link:active {
+  opacity: 0.6;
+}
