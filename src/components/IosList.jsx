@@ -1,12 +1,5 @@
 import { Link, Toggle } from 'framework7-react';
 
-// Chevron component for list items
-function ListChevron() {
-  return (
-    <i className="f7-icons ios-list-chevron" style={{ fontSize: '14px' }}>chevron_right</i>
-  );
-}
-
 // Section header above list groups
 export function IosListHeader({ children }) {
   return (
@@ -76,12 +69,11 @@ export function IosListItem({
           />
         )}
         {children}
-        {link && <ListChevron />}
       </div>
     </>
   );
 
-  const className = `ios-list-item${destructive ? ' ios-list-item-destructive' : ''}`;
+  const className = `ios-list-item${destructive ? ' ios-list-item-destructive' : ''}${link ? ' ios-list-item-link' : ''}`;
 
   if (link) {
     return (

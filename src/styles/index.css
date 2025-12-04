@@ -271,12 +271,26 @@ body,
   -webkit-font-smoothing: antialiased;
 }
 
-/* Chevron icon */
-.ios-list-chevron {
-  width: 14px;
-  height: 14px;
+/* Chevron icon via pseudo element */
+.ios-list-item-link::after {
+  content: 'chevron_right';
+  font-family: 'framework7-icons';
+  font-size: 18px;
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
   color: #C7C7CC;
   flex-shrink: 0;
+  margin-left: 6px;
 }
 
 /* Section header text */
