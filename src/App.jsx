@@ -22,7 +22,7 @@ export default function MyApp() {
         <View
           main
           url="/"
-          iosSwipeBack={true}
+          iosSwipeBack={false}
           browserHistory={false}
         />
       </App>
