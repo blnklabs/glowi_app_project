@@ -96,12 +96,11 @@ const isNavigationBlocked = (view) => {
 /**
  * Manual cleanup that fixes the corrupted state after swipe-back.
  * 
- * Based on debug analysis, after a stuck swipe:
- * - P0 (destination page): has page-current + transitioning classes
- * - P1 (dismissed page): has page-next + transitioning classes  
- * - Both need transitioning classes removed
- * - P1 needs to be removed from DOM
- * - Router state needs reset
+ * Based on real device debug analysis:
+ * - allowPageChange gets stuck as false
+ * - Destination page keeps page-previous class instead of page-current
+ * - Router URL doesn't update to match actual page
+ * - page-swipeback-active class lingers
  */
 const cleanupAfterSwipeBack = (view) => {
   console.log('[SwipeFix] Starting cleanup...');
@@ -114,6 +113,7 @@ const cleanupAfterSwipeBack = (view) => {
 
   // 2. Get all pages and identify which to keep vs remove
   const pages = Array.from(document.querySelectorAll('.view-main .page'));
+  console.log('[SwipeFix] Found', pages.length, 'pages');
   
   if (pages.length > 1) {
     // The page we're going BACK to is the first/underlying page (index 0)
@@ -126,47 +126,79 @@ const cleanupAfterSwipeBack = (view) => {
       console.log(`[SwipeFix] Removing dismissed page ${i + 1}`);
       page.remove();
     });
-
-    // Fix the destination page
-    destinationPage.classList.remove(
-      'page-previous',
-      'page-next',
-      'page-transitioning',
-      'page-transitioning-swipeback'
-    );
-    destinationPage.classList.add('page-current');
-    destinationPage.style.transform = '';
-    destinationPage.style.opacity = '';
   }
 
-  // 3. Clear transition classes from any remaining pages (safety)
-  document.querySelectorAll('.page').forEach((page) => {
+  // 3. Fix ALL remaining pages - ensure exactly one is page-current
+  const remainingPages = Array.from(document.querySelectorAll('.view-main .page'));
+  remainingPages.forEach((page, index) => {
+    // Remove ALL state classes first
     page.classList.remove(
+      'page-previous',
+      'page-next',
+      'page-current',
       'page-transitioning',
       'page-transitioning-swipeback',
-      'page-next'
+      'page-swipeback-active'
     );
+    
+    // The first (and should be only) page becomes current
+    if (index === 0) {
+      page.classList.add('page-current');
+      console.log('[SwipeFix] Set page-current on remaining page');
+    }
+    
+    // Clear inline styles
     page.style.transform = '';
+    page.style.opacity = '';
   });
 
-  // 4. Reset router state
+  // 4. Reset router state - FORCE these values
   if (view.router) {
+    // Force reset transitioning state
     view.router.transitioning = false;
+    
+    // CRITICAL: Force allowPageChange to true
     view.router.allowPageChange = true;
     
-    // Also update history to match actual state (pop the dismissed page)
+    // Update history to match actual state
     if (view.router.history.length > 1) {
-      view.router.history.pop();
-      console.log('[SwipeFix] Popped history, new length:', view.router.history.length);
+      // Pop until we're at the root
+      const newHistory = [view.router.history[0]]; // Keep only root
+      view.router.history = newHistory;
+      console.log('[SwipeFix] Reset history to:', newHistory);
     }
+    
+    // Update currentRoute to match the first history entry
+    if (view.router.history.length > 0) {
+      const currentPath = view.router.history[view.router.history.length - 1];
+      // Find the matching route
+      const matchingRoute = view.router.findMatchingRoute(currentPath);
+      if (matchingRoute) {
+        view.router.currentRoute = matchingRoute;
+        view.router.previousRoute = null;
+        console.log('[SwipeFix] Updated currentRoute to:', currentPath);
+      }
+    }
+    
+    // Double-check allowPageChange is true (in case something reset it)
+    setTimeout(() => {
+      if (view.router) {
+        view.router.allowPageChange = true;
+        view.router.transitioning = false;
+      }
+    }, 50);
   }
 
   // 5. Clear view-level transition classes
   if (view.el) {
-    view.el.classList.remove('router-transition-forward', 'router-transition-backward');
+    view.el.classList.remove(
+      'router-transition-forward', 
+      'router-transition-backward',
+      'router-transition'
+    );
   }
 
-  console.log('[SwipeFix] Cleanup complete');
+  console.log('[SwipeFix] Cleanup complete, allowPageChange:', view.router?.allowPageChange);
 };
 
 export default function MyApp() {
