@@ -4,6 +4,7 @@ import Framework7React, { App, View, f7ready, f7 } from 'framework7-react';
 import routes from './routes.js';
 import { ThemeProvider } from './context/ThemeContext';
 import { isDespia, onNativeBackGesture } from './utils/despia.js';
+import DebugOverlay from './components/DebugOverlay.jsx';
 
 Framework7.use(Framework7React);
 
@@ -196,6 +197,8 @@ export default function MyApp() {
           iosSwipeBack={useF7SwipeBack}
           browserHistory={false}
         />
+        {/* Debug overlay - remove after fixing navigation issues */}
+        <DebugOverlay />
       </App>
     </ThemeProvider>
   );
