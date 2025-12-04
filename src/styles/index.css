@@ -199,7 +199,7 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 50px;
+  min-height: 63px;
   padding: 11px 16px;
   background-color: #FFFFFF;
   position: relative;
@@ -235,11 +235,11 @@ body,
 /* Primary label - left side */
 .ios-list-item .ios-list-item-title,
 .ios-list-item-title {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 400;
   color: #000000;
   line-height: 22px;
-  letter-spacing: 0 !important;
+  letter-spacing: -0.0125rem !important;
   -webkit-font-smoothing: antialiased;
 }
 

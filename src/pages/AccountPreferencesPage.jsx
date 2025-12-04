@@ -7,7 +7,7 @@ export default function AccountPreferencesPage() {
       <Navbar>
         <NavLeft>
           <Link back className="flex items-center">
-            <Icon f7="chevron_left" style={{ fontSize: '24px', color: '#000' }} />
+            <Icon f7="chevron_left" style={{ fontSize: '24px', color: '#000', position: 'relative', left: '-2px' }} />
           </Link>
         </NavLeft>
         <NavTitle>Preferences</NavTitle>
