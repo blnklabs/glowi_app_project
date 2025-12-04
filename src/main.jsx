@@ -1,5 +1,6 @@
 import ReactDOM from 'react-dom/client';
 import MyApp from './App.jsx';
+import 'framework7-icons/css/framework7-icons.css';
 import './styles/index.css';
 import { initSafeAreas } from './utils/despia.js';
 

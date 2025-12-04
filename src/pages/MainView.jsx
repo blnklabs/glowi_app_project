@@ -1,6 +1,5 @@
-import { Page, Navbar, Tabs, Tab, NavRight, Link } from 'framework7-react';
+import { Page, Navbar, Tabs, Tab, NavRight, Link, Icon } from 'framework7-react';
 import { useState, useEffect } from 'react';
-import { UserCircleIcon } from '@heroicons/react/24/outline';
 import TabBar from '../components/TabBar';
 import { lightHaptic, isDespia } from '../utils/despia.js';
 
@@ -76,7 +75,7 @@ export default function MainView() {
       <Navbar large title={activeTab === 'home' ? 'Home' : 'Explore'} titleLargeKey={titleKey}>
         <NavRight>
           <Link href="/account/" iconOnly>
-            <UserCircleIcon className="w-6 h-6 text-black" />
+            <Icon f7="person_circle" style={{ fontSize: '24px', color: '#000' }} />
           </Link>
         </NavRight>
       </Navbar>

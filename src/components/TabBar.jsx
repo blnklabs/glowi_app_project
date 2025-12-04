@@ -1,11 +1,3 @@
-import {
-  HomeIcon,
-  MagnifyingGlassIcon
-} from '@heroicons/react/24/outline';
-import {
-  HomeIcon as HomeIconSolid,
-  MagnifyingGlassIcon as MagnifyingGlassIconSolid
-} from '@heroicons/react/24/solid';
 import { lightHaptic } from '../utils/despia.js';
 
 export default function TabBar({ activeTab, onTabChange }) {
@@ -28,17 +20,12 @@ export default function TabBar({ activeTab, onTabChange }) {
         onClick={() => handleTabChange('home')}
         className="ios-tabbar-item"
       >
-        {activeTab === 'home' ? (
-          <HomeIconSolid
-            className="ios-tabbar-icon"
-            style={{ color: activeColor }}
-          />
-        ) : (
-          <HomeIcon
-            className="ios-tabbar-icon"
-            style={{ color: inactiveColor }}
-          />
-        )}
+        <i
+          className="f7-icons ios-tabbar-icon"
+          style={{ color: activeTab === 'home' ? activeColor : inactiveColor }}
+        >
+          {activeTab === 'home' ? 'house_fill' : 'house'}
+        </i>
         <span
           className="ios-tabbar-label"
           style={{ color: activeTab === 'home' ? activeColor : inactiveColor }}
@@ -52,17 +39,12 @@ export default function TabBar({ activeTab, onTabChange }) {
         onClick={() => handleTabChange('explore')}
         className="ios-tabbar-item"
       >
-        {activeTab === 'explore' ? (
-          <MagnifyingGlassIconSolid
-            className="ios-tabbar-icon"
-            style={{ color: activeColor }}
-          />
-        ) : (
-          <MagnifyingGlassIcon
-            className="ios-tabbar-icon"
-            style={{ color: inactiveColor }}
-          />
-        )}
+        <i
+          className="f7-icons ios-tabbar-icon"
+          style={{ color: activeTab === 'explore' ? activeColor : inactiveColor }}
+        >
+          {activeTab === 'explore' ? 'search' : 'search'}
+        </i>
         <span
           className="ios-tabbar-label"
           style={{ color: activeTab === 'explore' ? activeColor : inactiveColor }}

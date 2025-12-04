@@ -10,10 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@heroicons/react": "^2.2.0",
     "@tailwindcss/vite": "^4.1.17",
     "despia-native": "^1.0.14",
     "framework7": "^9.0.1",
+    "framework7-icons": "^5.0.5",
     "framework7-react": "^9.0.1",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",

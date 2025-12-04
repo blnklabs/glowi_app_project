@@ -1,11 +1,9 @@
-import { Link } from 'framework7-react';
-import { ChevronRightIcon } from '@heroicons/react/20/solid';
-import { Toggle } from 'framework7-react';
+import { Link, Toggle } from 'framework7-react';
 
 // Chevron component for list items
 function ListChevron() {
   return (
-    <ChevronRightIcon className="ios-list-chevron" style={{ width: 14, height: 14 }} />
+    <i className="f7-icons ios-list-chevron" style={{ fontSize: '14px' }}>chevron_right</i>
   );
 }
 
