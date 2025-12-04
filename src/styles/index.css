@@ -199,7 +199,7 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 63px;
+  min-height: 60px;
   padding: 11px 16px;
   background-color: #FFFFFF;
   position: relative;
@@ -272,9 +272,9 @@ body,
 }
 
 /* Chevron icon via pseudo element */
-.ios-list-item-link::after {
+.ios-list-item-link .ios-list-item-right::after {
   content: 'chevron_right';
-  font-family: 'framework7-icons';
+  font-family: 'Framework7 Icons';
   font-size: 18px;
   font-weight: normal;
   font-style: normal;
@@ -386,7 +386,7 @@ input[type='time'],
 input[type='number'],
 select,
 textarea {
-  font-size: 17px;
+  font-size: 18px;
 }
 
 /* Centered text link (like "See how your data is managed...") */
