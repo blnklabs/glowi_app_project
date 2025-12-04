@@ -1,14 +1,42 @@
 /**
- * Despia Native SDK Utilities
+ * Despia Native SDK Utilities (Fail-Safe)
  * 
  * Provides environment detection, platform identification, and native feature
  * helpers for apps running in the Despia native runtime.
  * 
- * When running in Despia, the user agent includes "despia" along with platform
- * identifiers like "iphone", "ipad", or "android".
+ * All operations are wrapped in try-catch to ensure the app renders
+ * even if the Despia SDK fails to load or execute.
  */
 
-import despia from 'despia-native';
+// ============================================================================
+// Lazy SDK Loading
+// ============================================================================
+
+let despiaSDK = null;
+let sdkLoadAttempted = false;
+
+/**
+ * Lazily load the despia SDK on first use
+ */
+const getDespia = async () => {
+  if (sdkLoadAttempted) return despiaSDK;
+  sdkLoadAttempted = true;
+  
+  try {
+    const module = await import('despia-native');
+    despiaSDK = module.default || module;
+  } catch (e) {
+    console.warn('[Despia] SDK import failed:', e.message);
+    despiaSDK = null;
+  }
+  
+  return despiaSDK;
+};
+
+// Pre-load SDK in background (non-blocking)
+if (typeof window !== 'undefined') {
+  getDespia().catch(() => {});
+}
 
 // ============================================================================
 // Environment Detection
@@ -18,23 +46,38 @@ import despia from 'despia-native';
  * Check if running in the Despia native runtime
  */
 export const isDespia = () => {
-  return navigator.userAgent.toLowerCase().includes('despia');
+  try {
+    if (typeof navigator === 'undefined') return false;
+    return navigator.userAgent.toLowerCase().includes('despia');
+  } catch (e) {
+    return false;
+  }
 };
 
 /**
  * Check if running in Despia on iOS (iPhone or iPad)
  */
 export const isDespiaIOS = () => {
-  const ua = navigator.userAgent.toLowerCase();
-  return ua.includes('despia') && (ua.includes('iphone') || ua.includes('ipad'));
+  try {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent.toLowerCase();
+    return ua.includes('despia') && (ua.includes('iphone') || ua.includes('ipad'));
+  } catch (e) {
+    return false;
+  }
 };
 
 /**
  * Check if running in Despia on Android
  */
 export const isDespiaAndroid = () => {
-  const ua = navigator.userAgent.toLowerCase();
-  return ua.includes('despia') && ua.includes('android');
+  try {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent.toLowerCase();
+    return ua.includes('despia') && ua.includes('android');
+  } catch (e) {
+    return false;
+  }
 };
 
 /**
@@ -48,6 +91,35 @@ export const getPlatform = () => {
 };
 
 // ============================================================================
+// Safe Despia Command Execution
+// ============================================================================
+
+/**
+ * Safely execute a despia command
+ * @param {string} command - The despia command URL
+ */
+const safeDespia = (command) => {
+  try {
+    if (!isDespia()) return;
+    
+    // Use cached SDK if available
+    if (despiaSDK && typeof despiaSDK === 'function') {
+      despiaSDK(command);
+      return;
+    }
+    
+    // Otherwise load and execute
+    getDespia().then(sdk => {
+      if (sdk && typeof sdk === 'function') {
+        sdk(command);
+      }
+    }).catch(() => {});
+  } catch (e) {
+    console.warn('[Despia] Command failed:', command, e.message);
+  }
+};
+
+// ============================================================================
 // Haptic Feedback
 // ============================================================================
 
@@ -56,9 +128,7 @@ export const getPlatform = () => {
  * Only executes when running in Despia native runtime
  */
 export const lightHaptic = () => {
-  if (isDespia()) {
-    despia('lighthaptic://');
-  }
+  safeDespia('lighthaptic://');
 };
 
 /**
@@ -66,9 +136,7 @@ export const lightHaptic = () => {
  * Only executes when running in Despia native runtime
  */
 export const heavyHaptic = () => {
-  if (isDespia()) {
-    despia('heavyhaptic://');
-  }
+  safeDespia('heavyhaptic://');
 };
 
 /**
@@ -76,9 +144,7 @@ export const heavyHaptic = () => {
  * Only executes when running in Despia native runtime
  */
 export const successHaptic = () => {
-  if (isDespia()) {
-    despia('successhaptic://');
-  }
+  safeDespia('successhaptic://');
 };
 
 /**
@@ -86,9 +152,7 @@ export const successHaptic = () => {
  * Only executes when running in Despia native runtime
  */
 export const warningHaptic = () => {
-  if (isDespia()) {
-    despia('warninghaptic://');
-  }
+  safeDespia('warninghaptic://');
 };
 
 /**
@@ -96,9 +160,7 @@ export const warningHaptic = () => {
  * Only executes when running in Despia native runtime
  */
 export const errorHaptic = () => {
-  if (isDespia()) {
-    despia('errorhaptic://');
-  }
+  safeDespia('errorhaptic://');
 };
 
 // ============================================================================
@@ -114,16 +176,22 @@ export const errorHaptic = () => {
  * For web fallback, this sets sensible defaults using env() with fallbacks.
  */
 export const initSafeAreas = () => {
-  // Only set fallbacks when NOT in Despia (Despia injects its own)
-  if (!isDespia()) {
-    document.documentElement.style.setProperty(
-      '--safe-area-top',
-      'env(safe-area-inset-top, 0px)'
-    );
-    document.documentElement.style.setProperty(
-      '--safe-area-bottom',
-      'env(safe-area-inset-bottom, 0px)'
-    );
+  try {
+    if (typeof document === 'undefined') return;
+    
+    // Only set fallbacks when NOT in Despia (Despia injects its own)
+    if (!isDespia()) {
+      document.documentElement.style.setProperty(
+        '--safe-area-top',
+        'env(safe-area-inset-top, 0px)'
+      );
+      document.documentElement.style.setProperty(
+        '--safe-area-bottom',
+        'env(safe-area-inset-bottom, 0px)'
+      );
+    }
+  } catch (e) {
+    console.warn('[Despia] initSafeAreas failed:', e.message);
   }
 };
 
@@ -131,7 +199,7 @@ export const initSafeAreas = () => {
 // Export the raw despia function for advanced usage
 // ============================================================================
 
-export { despia };
+export const despia = safeDespia;
 
 // Default export with all utilities
 export default {
@@ -149,7 +217,5 @@ export default {
   // Safe Areas
   initSafeAreas,
   // Raw SDK
-  despia,
+  despia: safeDespia,
 };
-
-
