@@ -1,0 +1,268 @@
+{
+  "$schema": "Design System Configuration for F7 + React + Despia Starter",
+  "$version": "3.0.0",
+  "$description": "Token definitions, component rules, and Despia native patterns for CXD workflow.",
+
+  "colors": {
+    "primitive": {
+      "black": "#000000",
+      "white": "#FFFFFF",
+      "gray": {
+        "50": "#F9FAFB",
+        "100": "#F3F4F6",
+        "200": "#E5E7EB",
+        "300": "#D1D5DB",
+        "400": "#9CA3AF",
+        "500": "#6B7280",
+        "600": "#4B5563",
+        "700": "#374151",
+        "800": "#1F2937",
+        "900": "#111827"
+      },
+      "blue": {
+        "500": "#007AFF",
+        "600": "#0056CC"
+      },
+      "red": {
+        "500": "#FF3B30",
+        "600": "#D63029"
+      },
+      "green": {
+        "500": "#34C759",
+        "600": "#28A745"
+      }
+    },
+    "ios": {
+      "systemBackground": "#F2F2F7",
+      "cardBackground": "#FFFFFF",
+      "separator": "rgb(231, 231, 232)",
+      "label": "#000000",
+      "secondaryLabel": "#8E8E93",
+      "tertiaryLabel": "#C7C7CC",
+      "sectionHeader": "#6D6D72",
+      "link": "#007AFF",
+      "destructive": "#FF3B30",
+      "activeHighlight": "#E5E5EA"
+    }
+  },
+
+  "typography": {
+    "fontFamily": {
+      "sans": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif",
+      "display": "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif"
+    },
+    "scale": {
+      "xs": { "size": "13px", "lineHeight": "18px", "letterSpacing": "-0.08px" },
+      "sm": { "size": "14px", "lineHeight": "20px", "letterSpacing": "-0.08px" },
+      "base": { "size": "16px", "lineHeight": "22px", "letterSpacing": "-0.41px" },
+      "lg": { "size": "17px", "lineHeight": "22px", "letterSpacing": "-0.41px" },
+      "xl": { "size": "20px", "lineHeight": "25px", "letterSpacing": "-0.41px" },
+      "2xl": { "size": "24px", "lineHeight": "32px", "letterSpacing": "-0.41px" },
+      "3xl": { "size": "30px", "lineHeight": "36px", "letterSpacing": "-0.41px" }
+    },
+    "weight": {
+      "normal": "400",
+      "medium": "500",
+      "semibold": "600",
+      "bold": "700"
+    }
+  },
+
+  "spacing": {
+    "ios": {
+      "listGroupMargin": "0 16px 20px 16px",
+      "listGroupFirstMarginTop": "20px",
+      "listItemPadding": "11px 16px",
+      "listItemMinHeight": "50px",
+      "sectionHeaderMarginBottom": "7px",
+      "separatorLeftInset": "16px"
+    }
+  },
+
+  "borderRadius": {
+    "ios": {
+      "listCard": "20px",
+      "button": "14px",
+      "iconBadge": "6px"
+    }
+  },
+
+  "icons": {
+    "library": "@heroicons/react",
+    "usage": {
+      "navbar": { "size": "w-6 h-6", "color": "text-black" },
+      "backButton": { "size": "w-6 h-6", "color": "text-black" },
+      "tabbar": { "size": "w-6 h-6", "inactiveVariant": "outline", "activeVariant": "solid" },
+      "listChevron": { "size": "14px", "color": "#C7C7CC" }
+    },
+    "rules": [
+      "ALWAYS use Heroicons - never F7 icons (iconF7 prop)",
+      "Navigation icons: w-6 h-6 text-black",
+      "TabBar: outline when inactive, solid when active"
+    ]
+  },
+
+  "despia": {
+    "package": "despia-native",
+    "utilityFile": "src/utils/despia.js",
+    
+    "environmentDetection": {
+      "functions": ["isDespia()", "isDespiaIOS()", "isDespiaAndroid()", "getPlatform()"],
+      "userAgentCheck": "navigator.userAgent.includes('despia')",
+      "platforms": ["ios", "android", "web"]
+    },
+    
+    "haptics": {
+      "types": {
+        "light": {
+          "function": "lightHaptic()",
+          "protocol": "despia('lighthaptic://')",
+          "use": "Most interactions - tab switches, button taps, list items, back navigation"
+        },
+        "heavy": {
+          "function": "heavyHaptic()",
+          "protocol": "despia('heavyhaptic://')",
+          "use": "Major interactions - drag complete, significant state changes"
+        },
+        "success": {
+          "function": "successHaptic()",
+          "protocol": "despia('successhaptic://')",
+          "use": "Positive confirmations - form saved, action completed"
+        },
+        "warning": {
+          "function": "warningHaptic()",
+          "protocol": "despia('warninghaptic://')",
+          "use": "Caution actions - unsaved changes, warnings"
+        },
+        "error": {
+          "function": "errorHaptic()",
+          "protocol": "despia('errorhaptic://')",
+          "use": "Destructive actions - delete, logout, remove"
+        }
+      },
+      "rules": [
+        "All haptic calls are no-ops in web browser",
+        "Only execute in Despia native runtime",
+        "lightHaptic for most touch interactions",
+        "errorHaptic for destructive/dangerous actions",
+        "Wrap in isDespia() check (utility functions do this automatically)"
+      ]
+    },
+    
+    "safeAreas": {
+      "cssVariables": {
+        "top": "var(--safe-area-top)",
+        "bottom": "var(--safe-area-bottom)"
+      },
+      "initialization": "initSafeAreas() in main.jsx",
+      "usage": [
+        "TabBar: height: calc(58px + var(--safe-area-bottom))",
+        "TabBar: padding-bottom: var(--safe-area-bottom)",
+        "Page content: padding-bottom: calc(70px + var(--safe-area-bottom))"
+      ]
+    },
+    
+    "additionalFeatures": {
+      "note": "Reference Despia MCP or docs.despia.com for these features",
+      "available": [
+        "Push notifications",
+        "In-app purchases (RevenueCat)",
+        "Biometric authentication (Face ID, Touch ID)",
+        "iOS Home Widgets",
+        "Siri Shortcuts",
+        "Background location",
+        "Contact access",
+        "Native file system",
+        "AirPrint"
+      ]
+    }
+  },
+
+  "components": {
+    "navbar": {
+      "variants": {
+        "large": {
+          "use": "Main tab views only (Home, Explore in MainView)"
+        },
+        "standard": {
+          "use": "All other pages (Account, sub-pages, modals)"
+        }
+      },
+      "backButton": {
+        "pattern": "<Link back onClick={() => lightHaptic()}><ChevronLeftIcon className=\"w-6 h-6 text-black\" /></Link>",
+        "haptic": "lightHaptic() on tap"
+      }
+    },
+    
+    "tabbar": {
+      "height": "calc(58px + var(--safe-area-bottom))",
+      "paddingBottom": "var(--safe-area-bottom)",
+      "haptic": "lightHaptic() on tab change (only when tab actually changes)"
+    },
+    
+    "iosButton": {
+      "className": "ios-button",
+      "haptic": "lightHaptic() on press"
+    },
+    
+    "iosList": {
+      "page": {
+        "className": "ios-list-page"
+      },
+      "item": {
+        "haptic": "lightHaptic() built-in for link and onClick",
+        "destructiveHaptic": "errorHaptic() (must be called explicitly in onClick handler)"
+      },
+      "footerLink": {
+        "haptic": "lightHaptic() built-in"
+      }
+    }
+  },
+
+  "hapticMapping": {
+    "interactions": {
+      "tabSwitch": "lightHaptic",
+      "buttonPress": "lightHaptic",
+      "listItemTap": "lightHaptic",
+      "backNavigation": "lightHaptic",
+      "accountIconTap": "lightHaptic",
+      "footerLinkTap": "lightHaptic",
+      "formSubmitSuccess": "successHaptic",
+      "unsavedChangesWarning": "warningHaptic",
+      "logout": "errorHaptic",
+      "deleteAccount": "errorHaptic",
+      "deleteData": "errorHaptic",
+      "destructiveAction": "errorHaptic"
+    }
+  },
+
+  "rules": {
+    "critical": [
+      "NO React.StrictMode - causes F7 components to double-initialize",
+      "Navbar: use NavLeft + NavTitle children, NOT title/left props",
+      "Icons: ONLY Heroicons, NEVER F7 iconF7 prop",
+      "Range: ALWAYS in Block with styling, NEVER in ListItem",
+      "CSS import order: F7 bundle BEFORE Tailwind",
+      "Lists: Use IosList components, NOT F7 List/ListItem",
+      "Safe areas: Initialize in main.jsx with initSafeAreas()",
+      "Haptics: Always wrapped in isDespia() check (utility does this)",
+      "Destructive actions: Use errorHaptic(), not lightHaptic()"
+    ],
+    "despia": [
+      "All despia() calls must be wrapped in isDespia() check",
+      "Use utility functions from src/utils/despia.js",
+      "Test in browser (haptics are no-ops) AND in Despia app",
+      "Safe area CSS variables have fallbacks for web preview"
+    ]
+  },
+
+  "fileStructure": {
+    "src": {
+      "components": ["IosList.jsx", "TabBar.jsx"],
+      "pages": ["MainView.jsx", "AccountPage.jsx", "AccountProfilePage.jsx", "AccountPreferencesPage.jsx", "AccountNotificationsPage.jsx", "AccountAboutPage.jsx"],
+      "styles": ["index.css"],
+      "utils": ["despia.js"],
+      "root": ["App.jsx", "main.jsx", "routes.js"]
+    }
+  }
+}
