@@ -20,6 +20,10 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
+  /* Apple System Font (San Francisco) */
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* iOS TabBar - pixel-perfect recreation */
