@@ -234,10 +234,57 @@ const cleanupAfterSwipeBack = (view) => {
   console.log('[SwipeFix] Cleanup complete, allowPageChange:', view.router?.allowPageChange);
 };
 
+/**
+ * Prevent F7 from incorrectly adding page-previous to main-view-page.
+ * Uses MutationObserver to immediately remove the class when added.
+ */
+const setupMainViewPageProtection = () => {
+  // Wait for DOM to be ready
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+        const target = mutation.target;
+        // Check if this is the main-view-page and it has page-previous
+        if (target.classList.contains('main-view-page') && 
+            target.classList.contains('page-previous')) {
+          // Remove page-previous and ensure page-current
+          target.classList.remove('page-previous');
+          if (!target.classList.contains('page-current')) {
+            target.classList.add('page-current');
+          }
+          // Clear any transforms
+          target.style.transform = '';
+          console.log('[MainViewProtection] Removed page-previous from main-view-page');
+        }
+      }
+    });
+  });
+
+  // Start observing once DOM is ready
+  const startObserving = () => {
+    const mainViewPage = document.querySelector('.main-view-page');
+    if (mainViewPage) {
+      observer.observe(mainViewPage, { 
+        attributes: true, 
+        attributeFilter: ['class'] 
+      });
+      console.log('[MainViewProtection] Observer started');
+    } else {
+      // Retry after a short delay
+      setTimeout(startObserving, 100);
+    }
+  };
+
+  startObserving();
+};
+
 export default function MyApp() {
   useEffect(() => {
     // Setup swipe-back fix (works for both Despia and web environments)
     setupSwipeBackFix();
+    
+    // Setup protection to prevent main-view-page from getting page-previous
+    setupMainViewPageProtection();
   }, []);
 
   return (

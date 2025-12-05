@@ -70,6 +70,29 @@ body,
 }
 
 /* ============================================
+   CRITICAL: Main view page should NEVER be hidden
+   ============================================
+   The main-view-page is always the root/destination.
+   F7 sometimes incorrectly adds page-previous to it
+   after swipe-back, which triggers hiding animations.
+   Override ALL page-previous styling for main-view-page.
+   ============================================ */
+.view-main .page.main-view-page.page-previous {
+  transform: none !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Also ensure main-view-page is never affected by swipeback transforms */
+.view-main .page.main-view-page.page-transitioning,
+.view-main .page.main-view-page.page-transitioning-swipeback,
+.view-main .page.main-view-page.page-swipeback-active {
+  transform: none !important;
+}
+
+/* ============================================
    Theme Transition Animations
    ============================================
    Smooth color transitions for dark/light mode
