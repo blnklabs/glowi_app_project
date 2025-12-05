@@ -103,18 +103,18 @@ const isNavigationBlocked = (view) => {
 };
 
 /**
- * MINIMAL cleanup after swipe-back.
+ * Middle-ground cleanup after swipe-back.
  * 
- * IMPORTANT: Do NOT manipulate DOM pages or router history!
- * F7's gesture recognizer gets destroyed if we remove pages or mess with history.
+ * F7's swipebackAfterChange never fires, so we need to manually:
+ * 1. Remove the dismissed page (any page NOT marked as page-current)
+ * 2. Remove page-opacity-effect (blocks touch events)
+ * 3. Reset router flags
  * 
- * Only do the bare minimum:
- * 1. Remove page-opacity-effect (blocks touch events)
- * 2. Reset router flags (transitioning, allowPageChange)
- * 3. Clear transition classes
+ * IMPORTANT: Do NOT touch router.history or router.currentRoute!
+ * That breaks F7's gesture recognizer.
  */
 const cleanupAfterSwipeBack = (view) => {
-  console.log('[SwipeFix] Running minimal cleanup...');
+  console.log('[SwipeFix] Running cleanup...');
 
   // 1. Remove page-opacity-effect elements (these block all touch events!)
   document.querySelectorAll('.page-opacity-effect').forEach((el) => {
@@ -122,7 +122,22 @@ const cleanupAfterSwipeBack = (view) => {
     el.remove();
   });
 
-  // 2. Reset router flags ONLY - don't touch history or pages
+  // 2. Find and remove dismissed pages (pages that are NOT page-current)
+  // After swipe-back, the destination page should be page-current
+  // The dismissed page (that was swiped away) should be removed
+  const allPages = document.querySelectorAll('.view-main .page');
+  const currentPage = document.querySelector('.view-main .page.page-current');
+  
+  if (currentPage && allPages.length > 1) {
+    allPages.forEach((page) => {
+      if (page !== currentPage) {
+        console.log('[SwipeFix] Removing dismissed page:', page.className);
+        page.remove();
+      }
+    });
+  }
+
+  // 3. Reset router flags - but NOT history or currentRoute
   if (view.router) {
     view.router.transitioning = false;
     view.router.allowPageChange = true;
@@ -137,7 +152,7 @@ const cleanupAfterSwipeBack = (view) => {
     }, 100);
   }
 
-  // 3. Clear view-level transition classes
+  // 4. Clear view-level transition classes
   if (view.el) {
     view.el.classList.remove(
       'router-transition-forward', 
@@ -146,12 +161,18 @@ const cleanupAfterSwipeBack = (view) => {
     );
   }
 
-  // 4. Clear page-level transition classes (but don't change page-current/page-previous!)
-  document.querySelectorAll('.page-transitioning, .page-transitioning-swipeback').forEach((page) => {
-    page.classList.remove('page-transitioning', 'page-transitioning-swipeback');
-  });
+  // 5. Clear page-level transition classes from remaining page
+  if (currentPage) {
+    currentPage.classList.remove(
+      'page-transitioning', 
+      'page-transitioning-swipeback',
+      'page-swipeback-active'
+    );
+    currentPage.style.transform = '';
+    currentPage.style.opacity = '';
+  }
 
-  console.log('[SwipeFix] Minimal cleanup complete');
+  console.log('[SwipeFix] Cleanup complete');
 };
 
 /**
