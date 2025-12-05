@@ -103,18 +103,21 @@ const isNavigationBlocked = (view) => {
 };
 
 /**
- * Middle-ground cleanup after swipe-back.
+ * ULTRA-MINIMAL cleanup after swipe-back.
  * 
- * F7's swipebackAfterChange never fires, so we need to manually:
- * 1. Remove the dismissed page (any page NOT marked as page-current)
- * 2. Remove page-opacity-effect (blocks touch events)
- * 3. Reset router flags
+ * DO NOT touch the DOM pages at all! Our previous attempts to remove
+ * "dismissed" pages kept removing the wrong page because F7's classes
+ * don't update properly when transitionend doesn't fire.
  * 
- * IMPORTANT: Do NOT touch router.history or router.currentRoute!
- * That breaks F7's gesture recognizer.
+ * Only do:
+ * 1. Remove page-opacity-effect (touch blocker)
+ * 2. Reset router flags
+ * 3. Clear transition classes
+ * 
+ * Let F7 manage its own page lifecycle.
  */
 const cleanupAfterSwipeBack = (view) => {
-  console.log('[SwipeFix] Running cleanup...');
+  console.log('[SwipeFix] Running ultra-minimal cleanup...');
 
   // 1. Remove page-opacity-effect elements (these block all touch events!)
   document.querySelectorAll('.page-opacity-effect').forEach((el) => {
@@ -122,22 +125,7 @@ const cleanupAfterSwipeBack = (view) => {
     el.remove();
   });
 
-  // 2. Find and remove dismissed pages (pages that are NOT page-current)
-  // After swipe-back, the destination page should be page-current
-  // The dismissed page (that was swiped away) should be removed
-  const allPages = document.querySelectorAll('.view-main .page');
-  const currentPage = document.querySelector('.view-main .page.page-current');
-  
-  if (currentPage && allPages.length > 1) {
-    allPages.forEach((page) => {
-      if (page !== currentPage) {
-        console.log('[SwipeFix] Removing dismissed page:', page.className);
-        page.remove();
-      }
-    });
-  }
-
-  // 3. Reset router flags - but NOT history or currentRoute
+  // 2. Reset router flags ONLY
   if (view.router) {
     view.router.transitioning = false;
     view.router.allowPageChange = true;
@@ -152,7 +140,7 @@ const cleanupAfterSwipeBack = (view) => {
     }, 100);
   }
 
-  // 4. Clear view-level transition classes
+  // 3. Clear view-level transition classes
   if (view.el) {
     view.el.classList.remove(
       'router-transition-forward', 
@@ -161,60 +149,27 @@ const cleanupAfterSwipeBack = (view) => {
     );
   }
 
-  // 5. Clear page-level transition classes from remaining page
-  if (currentPage) {
-    currentPage.classList.remove(
+  // 4. Clear page-level transition classes (but NOT page-current/page-previous!)
+  document.querySelectorAll('.view-main .page').forEach((page) => {
+    page.classList.remove(
       'page-transitioning', 
       'page-transitioning-swipeback',
       'page-swipeback-active'
     );
-    currentPage.style.transform = '';
-    currentPage.style.opacity = '';
-  }
+  });
 
-  console.log('[SwipeFix] Cleanup complete');
+  console.log('[SwipeFix] Ultra-minimal cleanup complete');
 };
 
 /**
- * Safety net: If main-view-page gets stuck with page-previous when we're on root,
- * fix it. But be very careful not to interfere with normal F7 operation.
+ * DISABLED: This was interfering with F7's page management.
  * 
- * Only acts when:
- * 1. We're on root URL (/)
- * 2. NOT transitioning
- * 3. main-view-page has page-previous (wrong state)
+ * The periodic check was changing page classes at wrong times,
+ * confusing F7's internal state.
  */
 const setupMainViewPageProtection = () => {
-  f7ready((f7) => {
-    const view = f7.views.main;
-    if (!view) return;
-
-    // Check periodically instead of using MutationObserver
-    // MutationObserver was too aggressive and interfered with F7
-    setInterval(() => {
-      const currentUrl = view.router?.currentRoute?.url || '/';
-      const isOnRootPage = currentUrl === '/' || currentUrl.startsWith('/?');
-      
-      if (!isOnRootPage) return; // Don't interfere when on deeper pages
-      
-      const mainViewPage = document.querySelector('.main-view-page');
-      if (!mainViewPage) return;
-      
-      // Check if stuck in wrong state
-      const hasPagePrevious = mainViewPage.classList.contains('page-previous');
-      const isTransitioning = mainViewPage.classList.contains('page-transitioning') ||
-                              mainViewPage.classList.contains('page-transitioning-swipeback') ||
-                              view.router.transitioning;
-      
-      if (hasPagePrevious && !isTransitioning) {
-        // We're on root but main-view-page has page-previous - fix it
-        mainViewPage.classList.remove('page-previous');
-        mainViewPage.classList.add('page-current');
-        mainViewPage.style.transform = '';
-        console.log('[MainViewProtection] Fixed stuck page-previous on root');
-      }
-    }, 1000); // Check every second
-  });
+  // Intentionally disabled - let F7 manage page classes
+  console.log('[MainViewProtection] Disabled - letting F7 manage pages');
 };
 
 export default function MyApp() {
