@@ -248,8 +248,8 @@ export default function MyApp() {
           iosSwipeBack={true}
           browserHistory={false}
         />
-        {/* Debug overlay - remove after fixing navigation issues */}
-        <DebugOverlay />
+        {/* Debug overlay - uncomment to debug navigation issues */}
+        {/* <DebugOverlay /> */}
       </App>
     </ThemeProvider>
   );
