@@ -13,7 +13,9 @@ export default function DebugOverlay() {
     allowPageChange: true,
     historyLength: 0,
     currentUrl: '/',
+    previousUrl: null,
     pageClasses: [],
+    pageTransforms: [],
     hasOpacityEffect: false,
     eventLog: [],
   });
@@ -32,14 +34,33 @@ export default function DebugOverlay() {
         if (!view) return;
 
         const router = view.router;
-        const pages = document.querySelectorAll('.page');
+        const pages = document.querySelectorAll('.view-main .page');
         const pageClasses = [];
+        const pageTransforms = [];
 
         pages.forEach((page, i) => {
           const classList = Array.from(page.classList).filter(c => 
-            c.includes('page-') || c.includes('transitioning')
+            c.includes('page-') || c.includes('transitioning') || c.includes('swipeback')
           );
           pageClasses.push(`P${i}: ${classList.join(' ')}`);
+          
+          // Get computed transform and opacity
+          const computed = getComputedStyle(page);
+          const transform = computed.transform;
+          const opacity = computed.opacity;
+          // Simplify transform display
+          let transformStr = 'none';
+          if (transform && transform !== 'none') {
+            // Extract translateX from matrix
+            const match = transform.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,\s*([^,]+)/);
+            if (match) {
+              const translateX = parseFloat(match[1]);
+              transformStr = `x:${Math.round(translateX)}`;
+            } else {
+              transformStr = 'matrix';
+            }
+          }
+          pageTransforms.push(`P${i}: ${transformStr} op:${opacity}`);
         });
 
         const hasOpacityEffect = !!document.querySelector('.page-opacity-effect');
@@ -55,7 +76,9 @@ export default function DebugOverlay() {
             allowPageChange: router?.allowPageChange ?? true,
             historyLength: router?.history?.length || 0,
             currentUrl: router?.currentRoute?.url || '/',
+            previousUrl: router?.previousRoute?.url || null,
             pageClasses,
+            pageTransforms,
             hasOpacityEffect,
             eventLog: newLog,
           };
@@ -144,6 +167,28 @@ export default function DebugOverlay() {
     };
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
 
+    // Listen for touchend (when swipe gesture ends)
+    const handleTouchEnd = () => {
+      updateDebugState('TOUCHEND');
+    };
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    // CRITICAL: Listen for transitionend on pages - this is what F7 waits for!
+    const handleTransitionEnd = (e) => {
+      if (e.target.classList && e.target.classList.contains('page')) {
+        updateDebugState(`TRANSITIONEND: ${e.propertyName}`);
+      }
+    };
+    document.addEventListener('transitionend', handleTransitionEnd, true);
+
+    // Also listen for animationend as alternative
+    const handleAnimationEnd = (e) => {
+      if (e.target.classList && e.target.classList.contains('page')) {
+        updateDebugState(`ANIMATIONEND: ${e.animationName}`);
+      }
+    };
+    document.addEventListener('animationend', handleAnimationEnd, true);
+
     // Periodic refresh
     const interval = setInterval(() => updateDebugState(), 500);
 
@@ -151,6 +196,9 @@ export default function DebugOverlay() {
       window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('click', handleClick, true);
       document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('transitionend', handleTransitionEnd, true);
+      document.removeEventListener('animationend', handleAnimationEnd, true);
       clearInterval(interval);
     };
   }, []);
@@ -160,8 +208,10 @@ export default function DebugOverlay() {
     routerTransitioning, 
     allowPageChange, 
     historyLength, 
-    currentUrl, 
-    pageClasses, 
+    currentUrl,
+    previousUrl,
+    pageClasses,
+    pageTransforms,
     hasOpacityEffect,
     eventLog 
   } = debugState;
@@ -241,16 +291,37 @@ export default function DebugOverlay() {
         <span style={{ color: '#888' }}> (hist: {historyLength})</span>
       </div>
 
+      {previousUrl && (
+        <div style={{ marginBottom: '6px' }}>
+          <span style={{ color: '#888' }}>prevURL:</span>{' '}
+          <span style={{ color: '#f93' }}>{previousUrl}</span>
+        </div>
+      )}
+
       {/* Page Classes */}
       <div style={{ marginBottom: '6px' }}>
         <div style={{ color: '#888', marginBottom: '2px' }}>Pages:</div>
         {pageClasses.map((pc, i) => (
           <div key={i} style={{ 
-            color: pc.includes('transitioning') ? '#f93' : '#aaa',
+            color: pc.includes('transitioning') || pc.includes('swipeback') ? '#f93' : '#aaa',
             fontSize: '9px',
             marginLeft: '8px',
           }}>
             {pc}
+          </div>
+        ))}
+      </div>
+
+      {/* Page Transforms */}
+      <div style={{ marginBottom: '6px' }}>
+        <div style={{ color: '#888', marginBottom: '2px' }}>Transforms:</div>
+        {pageTransforms.map((pt, i) => (
+          <div key={i} style={{ 
+            color: pt.includes('x:0') || pt.includes('none') ? '#0f0' : '#f93',
+            fontSize: '9px',
+            marginLeft: '8px',
+          }}>
+            {pt}
           </div>
         ))}
       </div>
@@ -270,10 +341,15 @@ export default function DebugOverlay() {
           ) : (
             eventLog.map((event, i) => (
               <div key={i} style={{ 
-                color: event.includes('POPSTATE') ? '#0f0' : 
+                color: event.includes('TRANSITIONEND') ? '#f0f' :
+                       event.includes('ANIMATIONEND') ? '#f0f' :
+                       event.includes('TOUCHEND') ? '#ff0' :
+                       event.includes('POPSTATE') ? '#0f0' : 
                        event.includes('CLICK') ? '#0af' :
-                       event.includes('swipeback') ? '#f93' : '#aaa',
+                       event.includes('swipeback') ? '#f93' : 
+                       event.includes('TOUCH edge') ? '#0ff' : '#aaa',
                 fontSize: '9px',
+                fontWeight: event.includes('TRANSITIONEND') ? 'bold' : 'normal',
               }}>
                 {event}
               </div>
