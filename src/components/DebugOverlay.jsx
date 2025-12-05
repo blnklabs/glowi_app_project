@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { f7ready } from 'framework7-react';
 import { isDespia } from '../utils/despia.js';
 
@@ -7,6 +7,9 @@ import { isDespia } from '../utils/despia.js';
  * Shows real-time navigation state, events, and cleanup activity.
  */
 export default function DebugOverlay() {
+  const eventsRef = useRef(null);
+  const cleanupRef = useRef(null);
+  
   const [debugState, setDebugState] = useState({
     isDespia: false,
     routerTransitioning: false,
@@ -21,6 +24,19 @@ export default function DebugOverlay() {
   });
 
   const [isMinimized, setIsMinimized] = useState(false);
+
+  // Auto-scroll logs to bottom when they update
+  useEffect(() => {
+    if (eventsRef.current) {
+      eventsRef.current.scrollTop = eventsRef.current.scrollHeight;
+    }
+  }, [debugState.eventLog]);
+
+  useEffect(() => {
+    if (cleanupRef.current) {
+      cleanupRef.current.scrollTop = cleanupRef.current.scrollHeight;
+    }
+  }, [debugState.cleanupLog]);
 
   useEffect(() => {
     // Initial state
@@ -384,13 +400,16 @@ export default function DebugOverlay() {
           {/* Event Log */}
           <div style={{ marginBottom: '6px' }}>
             <div style={{ color: '#888', marginBottom: '2px' }}>Events:</div>
-            <div style={{ 
-              maxHeight: '90px', 
-              overflow: 'auto',
-              background: 'rgba(255,255,255,0.05)',
-              padding: '3px',
-              borderRadius: '3px',
-            }}>
+            <div 
+              ref={eventsRef}
+              style={{ 
+                maxHeight: '90px', 
+                overflow: 'auto',
+                background: 'rgba(255,255,255,0.05)',
+                padding: '3px',
+                borderRadius: '3px',
+              }}
+            >
               {eventLog.length === 0 ? (
                 <div style={{ color: '#444' }}>No events</div>
               ) : (
@@ -414,13 +433,16 @@ export default function DebugOverlay() {
           {/* Cleanup Log */}
           <div>
             <div style={{ color: '#888', marginBottom: '2px' }}>Cleanup:</div>
-            <div style={{ 
-              maxHeight: '70px', 
-              overflow: 'auto',
-              background: 'rgba(255,255,255,0.05)',
-              padding: '3px',
-              borderRadius: '3px',
-            }}>
+            <div 
+              ref={cleanupRef}
+              style={{ 
+                maxHeight: '70px', 
+                overflow: 'auto',
+                background: 'rgba(255,255,255,0.05)',
+                padding: '3px',
+                borderRadius: '3px',
+              }}
+            >
               {cleanupLog.length === 0 ? (
                 <div style={{ color: '#444' }}>No cleanup</div>
               ) : (
