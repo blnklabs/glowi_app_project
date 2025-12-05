@@ -71,25 +71,21 @@ body,
 
 /* ============================================
    CRITICAL: Main view page should NEVER be hidden
+   AFTER swipe-back completes
    ============================================
    The main-view-page is always the root/destination.
-   F7 sometimes incorrectly adds page-previous to it
-   after swipe-back, which triggers hiding animations.
-   Override ALL page-previous styling for main-view-page.
+   F7 sometimes incorrectly keeps page-previous on it
+   after swipe-back, which triggers hiding.
+   
+   IMPORTANT: Only override when NOT actively transitioning
+   (we need the transform during actual swipe animation)
    ============================================ */
-.view-main .page.main-view-page.page-previous {
+.view-main .page.main-view-page.page-previous:not(.page-transitioning):not(.page-transitioning-swipeback):not(.page-swipeback-active) {
   transform: none !important;
   z-index: 1 !important;
   pointer-events: auto !important;
   opacity: 1 !important;
   visibility: visible !important;
-}
-
-/* Also ensure main-view-page is never affected by swipeback transforms */
-.view-main .page.main-view-page.page-transitioning,
-.view-main .page.main-view-page.page-transitioning-swipeback,
-.view-main .page.main-view-page.page-swipeback-active {
-  transform: none !important;
 }
 
 /* ============================================

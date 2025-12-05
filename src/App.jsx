@@ -235,26 +235,36 @@ const cleanupAfterSwipeBack = (view) => {
 };
 
 /**
- * Prevent F7 from incorrectly adding page-previous to main-view-page.
- * Uses MutationObserver to immediately remove the class when added.
+ * Prevent F7 from incorrectly keeping page-previous on main-view-page
+ * AFTER swipe-back animation completes.
+ * 
+ * Uses MutationObserver but only acts when NOT actively transitioning
+ * (to avoid breaking the swipe animation).
  */
 const setupMainViewPageProtection = () => {
-  // Wait for DOM to be ready
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
         const target = mutation.target;
+        
         // Check if this is the main-view-page and it has page-previous
         if (target.classList.contains('main-view-page') && 
             target.classList.contains('page-previous')) {
-          // Remove page-previous and ensure page-current
-          target.classList.remove('page-previous');
-          if (!target.classList.contains('page-current')) {
-            target.classList.add('page-current');
+          
+          // DON'T remove during active transition (would break swipe animation)
+          const isTransitioning = target.classList.contains('page-transitioning') ||
+                                  target.classList.contains('page-transitioning-swipeback') ||
+                                  target.classList.contains('page-swipeback-active');
+          
+          if (!isTransitioning) {
+            // Safe to remove - animation is complete
+            target.classList.remove('page-previous');
+            if (!target.classList.contains('page-current')) {
+              target.classList.add('page-current');
+            }
+            target.style.transform = '';
+            console.log('[MainViewProtection] Removed page-previous from main-view-page (not transitioning)');
           }
-          // Clear any transforms
-          target.style.transform = '';
-          console.log('[MainViewProtection] Removed page-previous from main-view-page');
         }
       }
     });
@@ -270,7 +280,6 @@ const setupMainViewPageProtection = () => {
       });
       console.log('[MainViewProtection] Observer started');
     } else {
-      // Retry after a short delay
       setTimeout(startObserving, 100);
     }
   };
