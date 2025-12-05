@@ -1,6 +1,12 @@
 import { Page, Navbar, Block } from 'framework7-react';
+import { lightHaptic } from '../utils/despia.js';
 
 export default function HomePage() {
+  const handleNextClick = () => {
+    lightHaptic();
+    // Add your navigation or action logic here
+  };
+
   return (
     <Page>
       <Navbar title="Home" />
@@ -13,6 +19,7 @@ export default function HomePage() {
       <div className="px-4 mt-8">
         <button
           className="w-full py-4 bg-[#007AFF] text-white text-[17px] font-semibold rounded-[14px] active:opacity-80"
+          onClick={handleNextClick}
         >
           Next
         </button>

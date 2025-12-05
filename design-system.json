@@ -1,6 +1,6 @@
 {
   "$schema": "Design System Configuration for F7 + React + Despia Starter",
-  "$version": "3.0.0",
+  "$version": "3.1.0",
   "$description": "Token definitions, component rules, and Despia native patterns for CXD workflow.",
 
   "colors": {
@@ -33,16 +33,30 @@
       }
     },
     "ios": {
-      "systemBackground": "#F2F2F7",
-      "cardBackground": "#FFFFFF",
-      "separator": "rgb(231, 231, 232)",
-      "label": "#000000",
-      "secondaryLabel": "#8E8E93",
-      "tertiaryLabel": "#C7C7CC",
-      "sectionHeader": "#6D6D72",
-      "link": "#007AFF",
-      "destructive": "#FF3B30",
-      "activeHighlight": "#E5E5EA"
+      "light": {
+        "systemBackground": "#F2F2F7",
+        "cardBackground": "#FFFFFF",
+        "separator": "rgb(231, 231, 232)",
+        "label": "#000000",
+        "secondaryLabel": "#8E8E93",
+        "tertiaryLabel": "#C7C7CC",
+        "sectionHeader": "#6D6D72",
+        "link": "#007AFF",
+        "destructive": "#FF3B30",
+        "activeHighlight": "#E5E5EA"
+      },
+      "dark": {
+        "systemBackground": "#000000",
+        "cardBackground": "#1C1C1E",
+        "separator": "#38383A",
+        "label": "#FFFFFF",
+        "secondaryLabel": "#8E8E93",
+        "tertiaryLabel": "#636366",
+        "sectionHeader": "#8E8E93",
+        "link": "#007AFF",
+        "destructive": "#FF453A",
+        "chevron": "#48484A"
+      }
     }
   },
 
@@ -82,24 +96,47 @@
   "borderRadius": {
     "ios": {
       "listCard": "20px",
-      "button": "14px",
+      "button": "12px",
       "iconBadge": "6px"
     }
   },
 
   "icons": {
-    "library": "@heroicons/react",
+    "library": "framework7-icons",
+    "package": "framework7-icons",
     "usage": {
-      "navbar": { "size": "w-6 h-6", "color": "text-black" },
-      "backButton": { "size": "w-6 h-6", "color": "text-black" },
-      "tabbar": { "size": "w-6 h-6", "inactiveVariant": "outline", "activeVariant": "solid" },
-      "listChevron": { "size": "14px", "color": "#C7C7CC" }
+      "navbar": { "size": "24px", "color": "#000000" },
+      "backButton": { "icon": "chevron_left", "size": "24px" },
+      "tabbar": { "size": "25px", "inactiveIcon": "name", "activeIcon": "name_fill" },
+      "listChevron": { "icon": "chevron_right", "size": "18px", "color": "#C7C7CC" }
+    },
+    "patterns": {
+      "f7Icon": "<Icon f7=\"icon_name\" style={{ fontSize: '24px' }} />",
+      "f7IconClass": "<i className=\"f7-icons\" style={{ color: '#007AFF' }}>icon_name</i>"
     },
     "rules": [
-      "ALWAYS use Heroicons - never F7 icons (iconF7 prop)",
-      "Navigation icons: w-6 h-6 text-black",
-      "TabBar: outline when inactive, solid when active"
+      "Use Framework7 icons via Icon component or f7-icons class",
+      "TabBar icons: use name for inactive, name_fill for active (e.g., house/house_fill)",
+      "Back button: use chevron_left icon at 24px",
+      "List chevrons: rendered via CSS pseudo-element, not component"
     ]
+  },
+
+  "theme": {
+    "contextFile": "src/context/ThemeContext.jsx",
+    "provider": "ThemeProvider",
+    "hook": "useTheme()",
+    "api": {
+      "isDarkMode": "boolean - current theme state",
+      "toggleDarkMode": "function - toggles between light/dark",
+      "setIsDarkMode": "function - set specific theme"
+    },
+    "storage": "localStorage key: 'darkMode'",
+    "default": "System preference via prefers-color-scheme",
+    "implementation": {
+      "cssClass": "html.dark",
+      "variables": "F7 CSS variables overridden in index.css"
+    }
   },
 
   "despia": {
@@ -108,8 +145,16 @@
     
     "environmentDetection": {
       "functions": ["isDespia()", "isDespiaIOS()", "isDespiaAndroid()", "getPlatform()"],
-      "userAgentCheck": "navigator.userAgent.includes('despia')",
+      "userAgentCheck": "navigator.userAgent.toLowerCase().includes('despia')",
       "platforms": ["ios", "android", "web"]
+    },
+
+    "navigation": {
+      "onNativeBackGesture": {
+        "function": "onNativeBackGesture(callback)",
+        "description": "Register callback for native back navigation events (popstate)",
+        "returns": "Cleanup function to remove listeners"
+      }
     },
     
     "haptics": {
@@ -156,9 +201,9 @@
       },
       "initialization": "initSafeAreas() in main.jsx",
       "usage": [
-        "TabBar: height: calc(58px + var(--safe-area-bottom))",
+        "TabBar: height: calc(50px + var(--safe-area-bottom))",
         "TabBar: padding-bottom: var(--safe-area-bottom)",
-        "Page content: padding-bottom: calc(70px + var(--safe-area-bottom))"
+        "Page content: padding-bottom: 70px"
       ]
     },
     
@@ -189,19 +234,27 @@
         }
       },
       "backButton": {
-        "pattern": "<Link back onClick={() => lightHaptic()}><ChevronLeftIcon className=\"w-6 h-6 text-black\" /></Link>",
-        "haptic": "lightHaptic() on tap"
+        "pattern": "<Link back><Icon f7=\"chevron_left\" style={{ fontSize: '24px' }} /></Link>",
+        "haptic": "lightHaptic() on tap (optional)"
       }
     },
     
     "tabbar": {
-      "height": "calc(58px + var(--safe-area-bottom))",
+      "height": "calc(50px + var(--safe-area-bottom))",
       "paddingBottom": "var(--safe-area-bottom)",
-      "haptic": "lightHaptic() on tab change (only when tab actually changes)"
+      "iconSize": "25px",
+      "labelSize": "10px",
+      "haptic": "lightHaptic() on tab change (only when tab actually changes)",
+      "iconPattern": {
+        "inactive": "f7-icons class with icon name (e.g., house, search)",
+        "active": "f7-icons class with _fill variant (e.g., house_fill)"
+      }
     },
     
     "iosButton": {
       "className": "ios-button",
+      "height": "50px",
+      "borderRadius": "12px",
       "haptic": "lightHaptic() on press"
     },
     
@@ -240,13 +293,14 @@
     "critical": [
       "NO React.StrictMode - causes F7 components to double-initialize",
       "Navbar: use NavLeft + NavTitle children, NOT title/left props",
-      "Icons: ONLY Heroicons, NEVER F7 iconF7 prop",
+      "Icons: Use Framework7 icons via Icon f7=\"name\" or f7-icons class",
       "Range: ALWAYS in Block with styling, NEVER in ListItem",
       "CSS import order: F7 bundle BEFORE Tailwind",
       "Lists: Use IosList components, NOT F7 List/ListItem",
       "Safe areas: Initialize in main.jsx with initSafeAreas()",
       "Haptics: Always wrapped in isDespia() check (utility does this)",
-      "Destructive actions: Use errorHaptic(), not lightHaptic()"
+      "Destructive actions: Use errorHaptic(), not lightHaptic()",
+      "Dark mode: Wrap app in ThemeProvider from ThemeContext"
     ],
     "despia": [
       "All despia() calls must be wrapped in isDespia() check",
@@ -258,11 +312,16 @@
 
   "fileStructure": {
     "src": {
-      "components": ["IosList.jsx", "TabBar.jsx"],
-      "pages": ["MainView.jsx", "AccountPage.jsx", "AccountProfilePage.jsx", "AccountPreferencesPage.jsx", "AccountNotificationsPage.jsx", "AccountAboutPage.jsx"],
+      "components": ["IosList.jsx", "TabBar.jsx", "DebugOverlay.jsx"],
+      "context": ["ThemeContext.jsx"],
+      "pages": ["MainView.jsx", "HomePage.jsx", "AccountPage.jsx", "AccountSecurityPage.jsx", "AccountPreferencesPage.jsx", "AccountNotificationsPage.jsx", "AccountAboutPage.jsx"],
       "styles": ["index.css"],
       "utils": ["despia.js"],
       "root": ["App.jsx", "main.jsx", "routes.js"]
+    },
+    "notes": {
+      "HomePage": "Standalone page component, not used in current routes (MainView handles Home tab)",
+      "DebugOverlay": "Development tool for debugging navigation - disabled by default in App.jsx"
     }
   }
 }

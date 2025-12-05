@@ -14,7 +14,8 @@
       "Bash(cd /Users/damienst.john/Cursor\\ Projects/glowi_app_project && npm run dev:*)",
       "WebFetch(domain:github.com)",
       "Bash(cd /Users/damienst.john/Cursor\\ Projects/glowi_app_project && npm uninstall:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

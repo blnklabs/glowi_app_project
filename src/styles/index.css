@@ -89,36 +89,11 @@ body,
 }
 
 /* ============================================
-   Theme Transition Animations
+   Theme Transition Animations - DISABLED
    ============================================
-   Smooth color transitions for dark/light mode
-   NOTE: Do NOT add transitions to .page, .page-content,
-   .navbar, .navbar-bg as they interfere with F7's
-   page transition animationend detection
+   Transitions between light/dark mode were causing
+   visual inconsistencies. Instant switching is cleaner.
    ============================================ */
-html,
-.ios-list-page,
-.ios-list-card,
-.ios-list-item,
-.ios-list-item-title,
-.ios-list-item-value,
-.ios-list-item-subtitle,
-.ios-list-item-input,
-.ios-list-section-header,
-.ios-list-section-footer,
-.ios-tabbar,
-.ios-tabbar-icon,
-.ios-tabbar-label,
-.ios-button,
-.block,
-.block-title,
-.navbar .title,
-.navbar .title-large-text,
-.navbar .icon,
-.navbar .link i,
-.ios-list-item-right::after {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
 
 /* Apple iOS body text base style - 17px standard */
 .page-content,
@@ -289,9 +264,6 @@ html,
   -webkit-tap-highlight-color: transparent;
 }
 
-.ios-list-item:active {
-  background-color: #E5E5EA;
-}
 
 /* Separator line - indented from left */
 .ios-list-item:not(:last-child)::after {
@@ -519,10 +491,6 @@ html.dark .ios-list-item {
   background-color: #1C1C1E;
 }
 
-/* List item active state */
-html.dark .ios-list-item:active {
-  background-color: #2C2C2E;
-}
 
 /* List item separator */
 html.dark .ios-list-item:not(:last-child)::after {

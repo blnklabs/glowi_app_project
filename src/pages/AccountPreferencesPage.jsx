@@ -1,6 +1,7 @@
-import { Page, Navbar, NavLeft, NavTitle, Link, Icon, BlockTitle, Block, Range } from 'framework7-react';
+import { Page, Navbar, NavLeft, NavTitle, BlockTitle, Block, Range } from 'framework7-react';
 import { IosListGroup, IosListItem } from '../components/IosList';
 import { useTheme } from '../context/ThemeContext';
+import HapticBackLink from '../components/HapticBackLink';
 
 export default function AccountPreferencesPage() {
   const { isDarkMode, toggleDarkMode } = useTheme();
@@ -9,9 +10,7 @@ export default function AccountPreferencesPage() {
     <Page className="ios-list-page">
       <Navbar>
         <NavLeft>
-          <Link back className="flex items-center">
-            <Icon f7="chevron_left" style={{ fontSize: '24px', position: 'relative', left: '-2px' }} />
-          </Link>
+          <HapticBackLink />
         </NavLeft>
         <NavTitle>Preferences</NavTitle>
       </Navbar>

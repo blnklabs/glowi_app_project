@@ -1,14 +1,13 @@
-import { Page, Navbar, NavLeft, NavTitle, Link, Icon } from 'framework7-react';
+import { Page, Navbar, NavLeft, NavTitle } from 'framework7-react';
 import { IosListGroup, IosListItem, IosListItemInput } from '../components/IosList';
+import HapticBackLink from '../components/HapticBackLink';
 
 export default function AccountPage() {
   return (
     <Page className="ios-list-page">
       <Navbar>
         <NavLeft>
-          <Link back className="flex items-center">
-            <Icon f7="chevron_left" style={{ fontSize: '24px', position: 'relative', left: '-2px' }} />
-          </Link>
+          <HapticBackLink />
         </NavLeft>
         <NavTitle>Account</NavTitle>
       </Navbar>

@@ -1,4 +1,5 @@
 import { Link, Toggle } from 'framework7-react';
+import { lightHaptic, warningHaptic } from '../utils/despia.js';
 
 // Section header above list groups
 export function IosListHeader({ children }) {
@@ -75,16 +76,29 @@ export function IosListItem({
 
   const className = `ios-list-item${destructive ? ' ios-list-item-destructive' : ''}${link ? ' ios-list-item-link' : ''}`;
 
+  // Handle tap with haptic feedback
+  const handleTap = (e) => {
+    // Use warning haptic for destructive actions, light haptic otherwise
+    if (destructive) {
+      warningHaptic();
+    } else {
+      lightHaptic();
+    }
+    if (onClick) {
+      onClick(e);
+    }
+  };
+
   if (link) {
     return (
-      <Link href={link} className={className}>
+      <Link href={link} className={className} onClick={() => lightHaptic()}>
         {content}
       </Link>
     );
   }
 
   return (
-    <div className={className} onClick={onClick}>
+    <div className={className} onClick={handleTap}>
       {content}
     </div>
   );
@@ -118,8 +132,15 @@ export function IosListItemInput({
 
 // Centered footer link
 export function IosListFooterLink({ children, onClick }) {
+  const handleClick = (e) => {
+    lightHaptic();
+    if (onClick) {
+      onClick(e);
+    }
+  };
+
   return (
-    <div className="ios-list-footer-link" onClick={onClick}>
+    <div className="ios-list-footer-link" onClick={handleClick}>
       {children}
     </div>
   );
