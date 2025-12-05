@@ -132,13 +132,15 @@ const cleanupAfterSwipeBack = (view) => {
     return;
   }
 
-  // CRITICAL FIX: Dispatch transitionend event to unlock F7's internal allowViewTouchMove
-  // F7 listens for transitionend on $currentPageEl (the page being swiped away).
-  // After swipe completes, this page has classes: page-next + page-transitioning-swipeback
-  // (See swipe-back.js lines 169 and 177)
-  const dismissedPage = document.querySelector('.view-main .page.page-next.page-transitioning-swipeback');
+  // Try to find the dismissed page to dispatch transitionend
+  // Priority order: most specific to least specific selector
+  const dismissedPage =
+    document.querySelector('.view-main .page.page-next.page-transitioning-swipeback') ||
+    document.querySelector('.view-main .page.page-transitioning-swipeback') ||
+    document.querySelector('.view-main .page.page-next:not(.page-current)');
+
   if (dismissedPage) {
-    console.log('[SwipeFix] Dispatching transitionend to unlock allowViewTouchMove');
+    console.log('[SwipeFix] Found dismissed page, dispatching transitionend');
     const transitionEndEvent = new TransitionEvent('transitionend', {
       propertyName: 'transform',
       bubbles: true,
@@ -150,40 +152,53 @@ const cleanupAfterSwipeBack = (view) => {
     return;
   }
 
-  // Try alternate selector - page might just have page-transitioning-swipeback without page-next
-  const altPage = document.querySelector('.view-main .page.page-transitioning-swipeback');
-  if (altPage) {
-    console.log('[SwipeFix] Dispatching transitionend (alt selector)');
-    const transitionEndEvent = new TransitionEvent('transitionend', {
-      propertyName: 'transform',
-      bubbles: true,
-      cancelable: false,
-    });
-    altPage.dispatchEvent(transitionEndEvent);
-    console.log('[SwipeFix] transitionend dispatched (alt), F7 should handle cleanup');
-    return;
+  // FALLBACK: No dismissed page found with expected classes
+  // This happens if classes were already cleared - do full manual cleanup
+  console.log('[SwipeFix] No transitioning page found, doing full manual cleanup');
+
+  // 1. Remove page-opacity-effect elements
+  document.querySelectorAll('.page-opacity-effect').forEach((el) => el.remove());
+
+  // 2. Find and remove any non-current pages (the dismissed page)
+  const currentPage = document.querySelector('.view-main .page.page-current');
+  const allPages = document.querySelectorAll('.view-main .page');
+  let removedCount = 0;
+
+  allPages.forEach((page) => {
+    if (page !== currentPage && !page.classList.contains('main-view-page')) {
+      console.log('[SwipeFix] Removing orphaned page:', page.classList.toString().slice(0, 50));
+      page.remove();
+      removedCount++;
+    }
+  });
+
+  // 3. Pop history for removed pages
+  if (router && removedCount > 0 && router.history.length > 1) {
+    const historyBefore = router.history.length;
+    for (let i = 0; i < removedCount; i++) {
+      if (router.history.length > 1) {
+        router.history.pop();
+      }
+    }
+    console.log('[SwipeFix] Popped history:', historyBefore, '→', router.history.length);
+
+    // Update currentRoute to match
+    const newUrl = router.history[router.history.length - 1];
+    const matchingRoute = router.findMatchingRoute(newUrl);
+    if (matchingRoute) {
+      router.currentRoute = matchingRoute;
+      router.previousRoute = null;
+    }
   }
 
-  // FALLBACK: No transitioning page found, do manual cleanup
-  // This happens if the page classes were already cleared somehow
-  console.log('[SwipeFix] No transitioning page found, doing manual cleanup');
-
-  // Remove page-opacity-effect elements (these block all touch events!)
-  const opacityEffects = document.querySelectorAll('.page-opacity-effect');
-  if (opacityEffects.length > 0) {
-    opacityEffects.forEach((el) => el.remove());
-    console.log('[SwipeFix] Removed', opacityEffects.length, 'opacity effects');
-  }
-
-  // Reset router flags
+  // 4. Reset router flags
   if (router) {
     router.transitioning = false;
     router.allowPageChange = true;
     router.swipeBackActive = false;
-    console.log('[SwipeFix] Reset router flags manually');
   }
 
-  // Clear view-level transition classes
+  // 5. Clear view-level transition classes
   if (view.el) {
     view.el.classList.remove(
       'router-transition-forward',
@@ -191,6 +206,15 @@ const cleanupAfterSwipeBack = (view) => {
       'router-transition'
     );
   }
+
+  // 6. Clear page transition classes
+  document.querySelectorAll('.view-main .page').forEach((page) => {
+    page.classList.remove(
+      'page-transitioning',
+      'page-transitioning-swipeback',
+      'page-swipeback-active'
+    );
+  });
 
   console.log('[SwipeFix] Manual cleanup complete, history length:', router?.history.length);
 };
