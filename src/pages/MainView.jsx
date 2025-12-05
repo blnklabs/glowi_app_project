@@ -22,7 +22,7 @@ export default function MainView() {
     <Page pageContent={false} className="main-view-page">
       <Navbar large title={activeTab === 'home' ? 'Home' : 'Explore'} titleLargeKey={titleKey}>
         <NavRight>
-          <Link href="/account/" iconOnly>
+          <Link href="/account/" iconOnly onClick={() => lightHaptic()}>
             <Icon f7="person_crop_circle" style={{ fontSize: '24px' }} />
           </Link>
         </NavRight>
