@@ -106,18 +106,11 @@ const isNavigationBlocked = (view) => {
 /**
  * Cleanup after swipe-back completes.
  * 
- * Since F7's swipebackAfterChange never fires in Despia, it never removes
- * the dismissed page from DOM. We need to do that manually.
+ * Since F7's swipebackAfterChange never fires in Despia, it never:
+ * 1. Removes the dismissed page from DOM
+ * 2. Pops the dismissed route from history
  * 
- * We DO:
- * 1. Remove page-opacity-effect (blocks all touches)
- * 2. Remove dismissed pages (pages without page-current class)
- * 3. Reset router.transitioning and router.allowPageChange
- * 4. Clear stuck transition CSS classes
- * 
- * We DO NOT:
- * - Reset router history (F7 manages this correctly via swipebackBeforeChange)
- * - Change page-current/page-previous classes (F7 sets these correctly)
+ * We need to do BOTH manually.
  */
 const cleanupAfterSwipeBack = (view) => {
   console.log('[SwipeFix] Cleanup starting...');
@@ -130,27 +123,51 @@ const cleanupAfterSwipeBack = (view) => {
   }
 
   // 2. Remove dismissed pages from DOM
-  // After swipe-back, the page we came FROM should be removed
-  // The page-current class indicates which page is the destination
   const pages = Array.from(document.querySelectorAll('.view-main .page'));
   const currentPage = document.querySelector('.view-main .page.page-current');
+  let removedPages = 0;
   
   if (currentPage && pages.length > 1) {
     pages.forEach((page) => {
       if (page !== currentPage) {
         console.log('[SwipeFix] Removing dismissed page:', page.className.slice(0, 50));
         page.remove();
+        removedPages++;
       }
     });
   }
 
-  // 3. Reset router flags
+  // 3. Pop history entries for removed pages
+  // F7 normally does this in swipebackAfterChange, but that never fires
+  if (view.router && removedPages > 0) {
+    const historyBefore = view.router.history.length;
+    
+    // Pop one entry for each removed page
+    for (let i = 0; i < removedPages; i++) {
+      if (view.router.history.length > 1) {
+        view.router.history.pop();
+      }
+    }
+    
+    console.log('[SwipeFix] Popped history:', historyBefore, '→', view.router.history.length);
+    
+    // Update currentRoute to match the new top of history
+    const newCurrentUrl = view.router.history[view.router.history.length - 1];
+    const matchingRoute = view.router.findMatchingRoute(newCurrentUrl);
+    if (matchingRoute) {
+      view.router.currentRoute = matchingRoute;
+      view.router.previousRoute = null;
+      console.log('[SwipeFix] Updated currentRoute to:', newCurrentUrl);
+    }
+  }
+
+  // 4. Reset router flags
   if (view.router) {
     view.router.transitioning = false;
     view.router.allowPageChange = true;
     console.log('[SwipeFix] Reset router flags');
     
-    // Double-check after a delay (in case F7 resets them)
+    // Double-check after a delay
     setTimeout(() => {
       if (view.router) {
         view.router.transitioning = false;
@@ -159,7 +176,7 @@ const cleanupAfterSwipeBack = (view) => {
     }, 100);
   }
 
-  // 4. Clear view-level transition classes
+  // 5. Clear view-level transition classes
   if (view.el) {
     view.el.classList.remove(
       'router-transition-forward', 
@@ -168,7 +185,7 @@ const cleanupAfterSwipeBack = (view) => {
     );
   }
 
-  // 5. Clear stuck transition classes from remaining pages
+  // 6. Clear stuck transition classes from remaining pages
   document.querySelectorAll('.view-main .page').forEach((page) => {
     page.classList.remove(
       'page-transitioning', 
@@ -177,7 +194,7 @@ const cleanupAfterSwipeBack = (view) => {
     );
   });
 
-  console.log('[SwipeFix] Cleanup complete');
+  console.log('[SwipeFix] Cleanup complete, history length:', view.router?.history.length);
 };
 
 /**
