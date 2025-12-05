@@ -24,46 +24,58 @@ const f7params = {
 };
 
 /**
- * Swipe-back fix that doesn't rely on F7 events (which don't fire properly).
+ * Swipe-back fix for Despia WebView where F7's transitionend events don't fire.
+ * 
+ * Key insight: swipebackBeforeChange DOES fire, but swipebackAfterChange doesn't.
+ * We use swipebackBeforeChange as our primary trigger.
  * 
  * Strategy:
- * 1. Detect swipe start via swipebackMove
- * 2. Detect swipe end via touchend (since F7's swipebackAfterChange never fires)
- * 3. Wait for animation (350ms) then run MINIMAL cleanup
- * 
- * IMPORTANT: We removed the 3-second safety net because it was firing
- * multiple times (once per swipebackMove) and interfering with F7.
+ * 1. Listen for swipebackBeforeChange (fires reliably)
+ * 2. Wait for animation to complete (400ms)
+ * 3. Remove dismissed pages and reset router flags
+ * 4. DON'T touch router history (let F7 manage that)
  */
 const setupSwipeBackFix = () => {
   f7ready((f7) => {
     const view = f7.views.main;
     if (!view) return;
 
-    // Track swipe-back state
-    let swipeBackStarted = false;
     let cleanupScheduled = false;
+
+    // PRIMARY TRIGGER: swipebackBeforeChange (this DOES fire in Despia!)
+    view.on('swipebackBeforeChange', () => {
+      if (cleanupScheduled) return;
+      cleanupScheduled = true;
+      
+      console.log('[SwipeFix] swipebackBeforeChange fired, scheduling cleanup');
+      
+      // Wait for animation to complete (350ms F7 default + buffer)
+      setTimeout(() => {
+        console.log('[SwipeFix] Running cleanup after swipebackBeforeChange');
+        cleanupAfterSwipeBack(view);
+        cleanupScheduled = false;
+      }, 400);
+    });
+
+    // BACKUP TRIGGER: touchend after swipebackMove (in case swipebackBeforeChange doesn't fire)
+    let swipeBackStarted = false;
     let swipeBackTimestamp = 0;
 
-    // Detect when swipe-back gesture starts
     view.on('swipebackMove', () => {
       swipeBackStarted = true;
       swipeBackTimestamp = Date.now();
     });
 
-    // PRIMARY TRIGGER: touchend after swipe detected
-    // (F7's swipebackAfterChange never fires, so we use touchend instead)
     document.addEventListener('touchend', () => {
-      // Only run if swipe-back was recently detected (within last 2 seconds)
       const timeSinceSwipe = Date.now() - swipeBackTimestamp;
       
+      // Only run if swipe was detected, cleanup not already scheduled, and recent
       if (swipeBackStarted && !cleanupScheduled && timeSinceSwipe < 2000) {
         cleanupScheduled = true;
         
-        // Wait for animation to complete (350ms F7 default + buffer)
         setTimeout(() => {
-          // Only cleanup if there's something blocking
           if (isNavigationBlocked(view)) {
-            console.log('[SwipeFix] Running cleanup after touchend');
+            console.log('[SwipeFix] Running cleanup after touchend (backup)');
             cleanupAfterSwipeBack(view);
           }
           swipeBackStarted = false;
@@ -71,8 +83,6 @@ const setupSwipeBackFix = () => {
         }, 400);
       }
     }, { passive: true });
-    
-    // NO SAFETY NET - it was firing multiple times and breaking things
   });
 };
 
@@ -94,23 +104,23 @@ const isNavigationBlocked = (view) => {
 };
 
 /**
- * MINIMAL cleanup after swipe-back.
+ * Cleanup after swipe-back completes.
  * 
- * Strategy: Only fix what's absolutely necessary, let F7 manage its own
- * page lifecycle and history. Being too aggressive breaks subsequent swipes.
+ * Since F7's swipebackAfterChange never fires in Despia, it never removes
+ * the dismissed page from DOM. We need to do that manually.
  * 
- * We ONLY:
+ * We DO:
  * 1. Remove page-opacity-effect (blocks all touches)
- * 2. Reset router.transitioning and router.allowPageChange
- * 3. Clear stuck transition CSS classes
+ * 2. Remove dismissed pages (pages without page-current class)
+ * 3. Reset router.transitioning and router.allowPageChange
+ * 4. Clear stuck transition CSS classes
  * 
  * We DO NOT:
- * - Remove pages from DOM (F7 manages this)
- * - Reset router history (F7 manages this)
- * - Change page-current/page-previous classes (F7 manages this)
+ * - Reset router history (F7 manages this correctly via swipebackBeforeChange)
+ * - Change page-current/page-previous classes (F7 sets these correctly)
  */
 const cleanupAfterSwipeBack = (view) => {
-  console.log('[SwipeFix] Minimal cleanup starting...');
+  console.log('[SwipeFix] Cleanup starting...');
 
   // 1. Remove page-opacity-effect elements (these block all touch events!)
   const opacityEffects = document.querySelectorAll('.page-opacity-effect');
@@ -119,7 +129,22 @@ const cleanupAfterSwipeBack = (view) => {
     console.log('[SwipeFix] Removed', opacityEffects.length, 'opacity effects');
   }
 
-  // 2. Reset router flags ONLY - let F7 manage everything else
+  // 2. Remove dismissed pages from DOM
+  // After swipe-back, the page we came FROM should be removed
+  // The page-current class indicates which page is the destination
+  const pages = Array.from(document.querySelectorAll('.view-main .page'));
+  const currentPage = document.querySelector('.view-main .page.page-current');
+  
+  if (currentPage && pages.length > 1) {
+    pages.forEach((page) => {
+      if (page !== currentPage) {
+        console.log('[SwipeFix] Removing dismissed page:', page.className.slice(0, 50));
+        page.remove();
+      }
+    });
+  }
+
+  // 3. Reset router flags
   if (view.router) {
     view.router.transitioning = false;
     view.router.allowPageChange = true;
@@ -134,7 +159,7 @@ const cleanupAfterSwipeBack = (view) => {
     }, 100);
   }
 
-  // 3. Clear view-level transition classes
+  // 4. Clear view-level transition classes
   if (view.el) {
     view.el.classList.remove(
       'router-transition-forward', 
@@ -143,7 +168,7 @@ const cleanupAfterSwipeBack = (view) => {
     );
   }
 
-  // 4. Clear stuck transition classes from pages (but NOT page-current/page-previous!)
+  // 5. Clear stuck transition classes from remaining pages
   document.querySelectorAll('.view-main .page').forEach((page) => {
     page.classList.remove(
       'page-transitioning', 
@@ -152,7 +177,7 @@ const cleanupAfterSwipeBack = (view) => {
     );
   });
 
-  console.log('[SwipeFix] Minimal cleanup complete');
+  console.log('[SwipeFix] Cleanup complete');
 };
 
 /**
