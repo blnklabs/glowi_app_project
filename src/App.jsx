@@ -243,53 +243,70 @@ const cleanupAfterSwipeBack = (view) => {
  * Prevent F7 from incorrectly keeping page-previous on main-view-page
  * AFTER swipe-back animation completes.
  * 
- * Uses MutationObserver but only acts when NOT actively transitioning
- * (to avoid breaking the swipe animation).
+ * CRITICAL: Only act when we're actually ON the main-view-page (URL is root).
+ * If we're on a deeper page like /account/, the main-view-page SHOULD have
+ * page-previous class - that's correct behavior for F7's swipe-back.
  */
 const setupMainViewPageProtection = () => {
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-        const target = mutation.target;
-        
-        // Check if this is the main-view-page and it has page-previous
-        if (target.classList.contains('main-view-page') && 
-            target.classList.contains('page-previous')) {
+  f7ready((f7) => {
+    const view = f7.views.main;
+    if (!view) return;
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          const target = mutation.target;
           
-          // DON'T remove during active transition (would break swipe animation)
-          const isTransitioning = target.classList.contains('page-transitioning') ||
-                                  target.classList.contains('page-transitioning-swipeback') ||
-                                  target.classList.contains('page-swipeback-active');
-          
-          if (!isTransitioning) {
-            // Safe to remove - animation is complete
-            target.classList.remove('page-previous');
-            if (!target.classList.contains('page-current')) {
-              target.classList.add('page-current');
+          // Check if this is the main-view-page and it has page-previous
+          if (target.classList.contains('main-view-page') && 
+              target.classList.contains('page-previous')) {
+            
+            // CRITICAL: Only remove page-previous if we're actually on the root page
+            // If we're on /account/, the main-view-page SHOULD be page-previous
+            const currentUrl = view.router?.currentRoute?.url || '/';
+            const isOnRootPage = currentUrl === '/' || currentUrl.startsWith('/?');
+            
+            if (!isOnRootPage) {
+              // We're on a deeper page - main-view-page SHOULD be page-previous
+              // Don't interfere!
+              return;
             }
-            target.style.transform = '';
-            console.log('[MainViewProtection] Removed page-previous from main-view-page (not transitioning)');
+            
+            // DON'T remove during active transition (would break swipe animation)
+            const isTransitioning = target.classList.contains('page-transitioning') ||
+                                    target.classList.contains('page-transitioning-swipeback') ||
+                                    target.classList.contains('page-swipeback-active');
+            
+            if (!isTransitioning) {
+              // We're on root AND not transitioning - safe to fix
+              target.classList.remove('page-previous');
+              if (!target.classList.contains('page-current')) {
+                target.classList.add('page-current');
+              }
+              target.style.transform = '';
+              console.log('[MainViewProtection] Fixed main-view-page on root page');
+            }
           }
         }
-      }
-    });
-  });
-
-  // Start observing once DOM is ready
-  const startObserving = () => {
-    const mainViewPage = document.querySelector('.main-view-page');
-    if (mainViewPage) {
-      observer.observe(mainViewPage, { 
-        attributes: true, 
-        attributeFilter: ['class'] 
       });
-      console.log('[MainViewProtection] Observer started');
-    } else {
-      setTimeout(startObserving, 100);
-    }
-  };
+    });
 
-  startObserving();
+    // Start observing once DOM is ready
+    const startObserving = () => {
+      const mainViewPage = document.querySelector('.main-view-page');
+      if (mainViewPage) {
+        observer.observe(mainViewPage, { 
+          attributes: true, 
+          attributeFilter: ['class'] 
+        });
+        console.log('[MainViewProtection] Observer started');
+      } else {
+        setTimeout(startObserving, 100);
+      }
+    };
+
+    startObserving();
+  });
 };
 
 export default function MyApp() {
