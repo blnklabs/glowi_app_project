@@ -15,6 +15,11 @@ const f7params = {
   view: {
     iosDynamicNavbar: true,
     animate: true,
+    // Increase swipe-back detection area (default is 30px)
+    // Helps with devices that have safe area insets
+    iosSwipeBackActiveArea: 50,
+    // Reduce threshold for easier swipe triggering
+    iosSwipeBackThreshold: 0,
   },
 };
 

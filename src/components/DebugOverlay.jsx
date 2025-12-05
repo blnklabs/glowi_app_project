@@ -135,12 +135,22 @@ export default function DebugOverlay() {
     };
     document.addEventListener('click', handleClick, true);
 
+    // Listen for touch near left edge (swipe detection area)
+    const handleTouchStart = (e) => {
+      const touch = e.touches[0];
+      if (touch && touch.clientX < 60) {
+        updateDebugState(`TOUCH edge x:${Math.round(touch.clientX)}`);
+      }
+    };
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+
     // Periodic refresh
     const interval = setInterval(() => updateDebugState(), 500);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('click', handleClick, true);
+      document.removeEventListener('touchstart', handleTouchStart);
       clearInterval(interval);
     };
   }, []);
