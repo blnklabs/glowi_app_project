@@ -3,22 +3,24 @@ import { f7ready } from 'framework7-react';
 import { isDespia } from '../utils/despia.js';
 
 /**
- * Debug overlay component that displays real-time navigation state.
- * Shows router state, page classes, and event logs.
+ * Comprehensive debug overlay component.
+ * Shows real-time navigation state, events, and cleanup activity.
  */
 export default function DebugOverlay() {
   const [debugState, setDebugState] = useState({
     isDespia: false,
     routerTransitioning: false,
     allowPageChange: true,
-    historyLength: 0,
+    historyStack: [],
     currentUrl: '/',
-    previousUrl: null,
     pageClasses: [],
-    pageTransforms: [],
     hasOpacityEffect: false,
     eventLog: [],
+    cleanupLog: [],
+    gestureState: 'idle', // idle, swiping, completed, cancelled
   });
+
+  const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
     // Initial state
@@ -28,62 +30,56 @@ export default function DebugOverlay() {
     }));
 
     // Update function
-    const updateDebugState = (eventName = null) => {
+    const updateDebugState = (eventName = null, category = 'event') => {
       f7ready((f7) => {
         const view = f7.views.main;
         if (!view) return;
 
         const router = view.router;
-        const pages = document.querySelectorAll('.view-main .page');
+        const pages = document.querySelectorAll('.page');
         const pageClasses = [];
-        const pageTransforms = [];
 
         pages.forEach((page, i) => {
           const classList = Array.from(page.classList).filter(c => 
-            c.includes('page-') || c.includes('transitioning') || c.includes('swipeback')
+            c.includes('page-') || c.includes('transitioning') || c.includes('swipe') || c === 'main-view-page'
           );
           pageClasses.push(`P${i}: ${classList.join(' ')}`);
-          
-          // Get computed transform and opacity
-          const computed = getComputedStyle(page);
-          const transform = computed.transform;
-          const opacity = computed.opacity;
-          // Simplify transform display
-          let transformStr = 'none';
-          if (transform && transform !== 'none') {
-            // Extract translateX from matrix
-            const match = transform.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,\s*([^,]+)/);
-            if (match) {
-              const translateX = parseFloat(match[1]);
-              transformStr = `x:${Math.round(translateX)}`;
-            } else {
-              transformStr = 'matrix';
-            }
-          }
-          pageTransforms.push(`P${i}: ${transformStr} op:${opacity}`);
         });
 
         const hasOpacityEffect = !!document.querySelector('.page-opacity-effect');
 
         setDebugState(prev => {
-          const newLog = eventName 
-            ? [...prev.eventLog.slice(-9), `${new Date().toLocaleTimeString()}: ${eventName}`]
-            : prev.eventLog;
+          const timestamp = new Date().toLocaleTimeString();
+          let newEventLog = prev.eventLog;
+          let newCleanupLog = prev.cleanupLog;
+
+          if (eventName) {
+            const entry = `${timestamp}: ${eventName}`;
+            if (category === 'cleanup') {
+              newCleanupLog = [...prev.cleanupLog.slice(-9), entry];
+            } else {
+              newEventLog = [...prev.eventLog.slice(-14), entry];
+            }
+          }
 
           return {
             ...prev,
             routerTransitioning: router?.transitioning || false,
             allowPageChange: router?.allowPageChange ?? true,
-            historyLength: router?.history?.length || 0,
+            historyStack: router?.history ? [...router.history] : [],
             currentUrl: router?.currentRoute?.url || '/',
-            previousUrl: router?.previousRoute?.url || null,
             pageClasses,
-            pageTransforms,
             hasOpacityEffect,
-            eventLog: newLog,
+            eventLog: newEventLog,
+            cleanupLog: newCleanupLog,
           };
         });
       });
+    };
+
+    // Update gesture state
+    const setGestureState = (state) => {
+      setDebugState(prev => ({ ...prev, gestureState: state }));
     };
 
     // Initial update
@@ -94,66 +90,80 @@ export default function DebugOverlay() {
       const view = f7.views.main;
       if (!view) return;
 
-      // Swipe-back events
+      // Swipe-back gesture events
       view.on('swipebackMove', () => {
-        updateDebugState('swipebackMove');
+        setGestureState('swiping');
+        updateDebugState('swipebackMove', 'gesture');
       });
 
       view.on('swipebackBeforeChange', () => {
-        updateDebugState('swipebackBeforeChange');
+        updateDebugState('swipebackBeforeChange', 'gesture');
       });
 
       view.on('swipebackAfterChange', () => {
-        updateDebugState('swipebackAfterChange');
+        setGestureState('completed');
+        updateDebugState('swipebackAfterChange', 'gesture');
+        setTimeout(() => setGestureState('idle'), 1000);
       });
 
       view.on('swipebackBeforeReset', () => {
-        updateDebugState('swipebackBeforeReset');
+        updateDebugState('swipebackBeforeReset', 'gesture');
       });
 
       view.on('swipebackAfterReset', () => {
-        updateDebugState('swipebackAfterReset');
+        setGestureState('cancelled');
+        updateDebugState('swipebackAfterReset', 'gesture');
+        setTimeout(() => setGestureState('idle'), 1000);
       });
 
       // Router events
-      view.router.on('routeChange', () => {
-        updateDebugState('routeChange');
+      view.router.on('routeChange', (newRoute) => {
+        updateDebugState(`routeChange → ${newRoute?.url || '?'}`, 'router');
       });
 
-      view.router.on('routeChanged', () => {
-        updateDebugState('routeChanged');
+      view.router.on('routeChanged', (newRoute) => {
+        updateDebugState(`routeChanged → ${newRoute?.url || '?'}`, 'router');
       });
 
-      // Page events
-      view.on('pageBeforeIn', () => {
-        updateDebugState('pageBeforeIn');
+      // Page lifecycle events
+      view.on('pageBeforeIn', (page) => {
+        updateDebugState(`pageBeforeIn: ${page?.name || '?'}`, 'lifecycle');
       });
 
-      view.on('pageAfterIn', () => {
-        updateDebugState('pageAfterIn');
+      view.on('pageAfterIn', (page) => {
+        updateDebugState(`pageAfterIn: ${page?.name || '?'}`, 'lifecycle');
       });
 
-      view.on('pageBeforeOut', () => {
-        updateDebugState('pageBeforeOut');
+      view.on('pageBeforeOut', (page) => {
+        updateDebugState(`pageBeforeOut: ${page?.name || '?'}`, 'lifecycle');
       });
 
-      view.on('pageAfterOut', () => {
-        updateDebugState('pageAfterOut');
+      view.on('pageAfterOut', (page) => {
+        updateDebugState(`pageAfterOut: ${page?.name || '?'}`, 'lifecycle');
+      });
+
+      view.on('pageInit', (page) => {
+        updateDebugState(`pageInit: ${page?.name || '?'}`, 'lifecycle');
+      });
+
+      view.on('pageBeforeRemove', (page) => {
+        updateDebugState(`pageBeforeRemove: ${page?.name || '?'}`, 'lifecycle');
       });
     });
 
     // Listen for popstate
     const handlePopState = () => {
-      updateDebugState('POPSTATE');
+      updateDebugState('POPSTATE', 'browser');
     };
     window.addEventListener('popstate', handlePopState);
 
-    // Listen for clicks
+    // Listen for clicks on navigation elements
     const handleClick = (e) => {
-      const target = e.target.closest('a, button, .ios-list-item-link, .ios-tabbar-item');
+      const target = e.target.closest('a, button, .ios-list-item-link, .ios-tabbar-item, .link');
       if (target) {
         const href = target.getAttribute('href') || target.closest('[href]')?.getAttribute('href');
-        updateDebugState(`CLICK: ${href || target.className.slice(0, 20)}`);
+        const text = target.textContent?.slice(0, 15) || '';
+        updateDebugState(`CLICK: ${href || text || target.className.slice(0, 15)}`, 'interaction');
       }
     };
     document.addEventListener('click', handleClick, true);
@@ -162,32 +172,20 @@ export default function DebugOverlay() {
     const handleTouchStart = (e) => {
       const touch = e.touches[0];
       if (touch && touch.clientX < 60) {
-        updateDebugState(`TOUCH edge x:${Math.round(touch.clientX)}`);
+        updateDebugState(`TOUCH edge x:${Math.round(touch.clientX)}`, 'gesture');
       }
     };
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
 
-    // Listen for touchend (when swipe gesture ends)
-    const handleTouchEnd = () => {
-      updateDebugState('TOUCHEND');
-    };
-    document.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-    // CRITICAL: Listen for transitionend on pages - this is what F7 waits for!
-    const handleTransitionEnd = (e) => {
-      if (e.target.classList && e.target.classList.contains('page')) {
-        updateDebugState(`TRANSITIONEND: ${e.propertyName}`);
+    // Listen for cleanup console logs
+    const originalLog = console.log;
+    console.log = (...args) => {
+      originalLog.apply(console, args);
+      const msg = args.join(' ');
+      if (msg.includes('[SwipeFix]') || msg.includes('[MainViewProtection]')) {
+        updateDebugState(msg.replace(/\[.*?\]\s*/, ''), 'cleanup');
       }
     };
-    document.addEventListener('transitionend', handleTransitionEnd, true);
-
-    // Also listen for animationend as alternative
-    const handleAnimationEnd = (e) => {
-      if (e.target.classList && e.target.classList.contains('page')) {
-        updateDebugState(`ANIMATIONEND: ${e.animationName}`);
-      }
-    };
-    document.addEventListener('animationend', handleAnimationEnd, true);
 
     // Periodic refresh
     const interval = setInterval(() => updateDebugState(), 500);
@@ -196,9 +194,7 @@ export default function DebugOverlay() {
       window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('click', handleClick, true);
       document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('transitionend', handleTransitionEnd, true);
-      document.removeEventListener('animationend', handleAnimationEnd, true);
+      console.log = originalLog;
       clearInterval(interval);
     };
   }, []);
@@ -207,17 +203,49 @@ export default function DebugOverlay() {
     isDespia: inDespia, 
     routerTransitioning, 
     allowPageChange, 
-    historyLength, 
-    currentUrl,
-    previousUrl,
-    pageClasses,
-    pageTransforms,
+    historyStack,
+    currentUrl, 
+    pageClasses, 
     hasOpacityEffect,
-    eventLog 
+    eventLog,
+    cleanupLog,
+    gestureState,
   } = debugState;
 
   // Status indicators
   const isBlocked = routerTransitioning || !allowPageChange || hasOpacityEffect;
+
+  // Gesture state colors
+  const gestureColors = {
+    idle: '#666',
+    swiping: '#f90',
+    completed: '#0f0',
+    cancelled: '#f33',
+  };
+
+  if (isMinimized) {
+    return (
+      <div 
+        onClick={() => setIsMinimized(false)}
+        style={{
+          position: 'fixed',
+          top: '50px',
+          right: '10px',
+          background: isBlocked ? '#f33' : '#0c0',
+          color: '#fff',
+          padding: '8px 12px',
+          borderRadius: '20px',
+          fontSize: '11px',
+          fontFamily: 'monospace',
+          zIndex: 99999,
+          cursor: 'pointer',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+        }}
+      >
+        🔍 {isBlocked ? '⛔' : '✅'} TAP
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -225,139 +253,192 @@ export default function DebugOverlay() {
       top: '50%',
       left: '50%',
       transform: 'translate(-50%, -50%)',
-      background: 'rgba(0, 0, 0, 0.9)',
+      background: 'rgba(0, 0, 0, 0.92)',
       color: '#fff',
-      padding: '12px',
+      padding: '10px',
       borderRadius: '12px',
-      fontSize: '10px',
+      fontSize: '9px',
       fontFamily: 'monospace',
       zIndex: 99999,
-      maxWidth: '90vw',
-      maxHeight: '60vh',
+      maxWidth: '95vw',
+      maxHeight: '70vh',
       overflow: 'auto',
-      pointerEvents: 'none',
+      pointerEvents: 'auto',
       boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
     }}>
-      <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '12px', color: '#0af' }}>
-        🔍 DEBUG
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#0af' }}>
+          🔍 DEBUG
+        </div>
+        <button 
+          onClick={() => setIsMinimized(true)}
+          style={{
+            background: '#333',
+            border: 'none',
+            color: '#fff',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            fontSize: '9px',
+            cursor: 'pointer',
+          }}
+        >
+          minimize
+        </button>
       </div>
 
       {/* Status Banner */}
       <div style={{
         background: isBlocked ? '#f33' : '#0c0',
-        padding: '4px 8px',
+        padding: '3px 6px',
         borderRadius: '4px',
-        marginBottom: '8px',
+        marginBottom: '6px',
         textAlign: 'center',
         fontWeight: 'bold',
+        fontSize: '10px',
       }}>
         {isBlocked ? '⛔ NAVIGATION BLOCKED' : '✅ NAVIGATION OK'}
       </div>
 
-      {/* Environment */}
-      <div style={{ marginBottom: '6px' }}>
-        <span style={{ color: '#888' }}>ENV:</span>{' '}
-        <span style={{ color: inDespia ? '#0f0' : '#ff0' }}>
-          {inDespia ? 'Despia Native' : 'Web Browser'}
-        </span>
-      </div>
-
-      {/* Router State */}
-      <div style={{ marginBottom: '6px' }}>
-        <span style={{ color: '#888' }}>transitioning:</span>{' '}
-        <span style={{ color: routerTransitioning ? '#f33' : '#0f0' }}>
-          {String(routerTransitioning)}
-        </span>
-      </div>
-
-      <div style={{ marginBottom: '6px' }}>
-        <span style={{ color: '#888' }}>allowPageChange:</span>{' '}
-        <span style={{ color: allowPageChange ? '#0f0' : '#f33' }}>
-          {String(allowPageChange)}
-        </span>
-      </div>
-
-      <div style={{ marginBottom: '6px' }}>
-        <span style={{ color: '#888' }}>opacityEffect:</span>{' '}
-        <span style={{ color: hasOpacityEffect ? '#f33' : '#0f0' }}>
-          {String(hasOpacityEffect)}
-        </span>
-      </div>
-
-      {/* Route Info */}
-      <div style={{ marginBottom: '6px' }}>
-        <span style={{ color: '#888' }}>URL:</span>{' '}
-        <span style={{ color: '#0af' }}>{currentUrl}</span>
-        <span style={{ color: '#888' }}> (hist: {historyLength})</span>
-      </div>
-
-      {previousUrl && (
-        <div style={{ marginBottom: '6px' }}>
-          <span style={{ color: '#888' }}>prevURL:</span>{' '}
-          <span style={{ color: '#f93' }}>{previousUrl}</span>
-        </div>
-      )}
-
-      {/* Page Classes */}
-      <div style={{ marginBottom: '6px' }}>
-        <div style={{ color: '#888', marginBottom: '2px' }}>Pages:</div>
-        {pageClasses.map((pc, i) => (
-          <div key={i} style={{ 
-            color: pc.includes('transitioning') || pc.includes('swipeback') ? '#f93' : '#aaa',
-            fontSize: '9px',
-            marginLeft: '8px',
-          }}>
-            {pc}
+      {/* Two Column Layout */}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        {/* Left Column - State */}
+        <div style={{ flex: 1, minWidth: '140px' }}>
+          {/* Environment */}
+          <div style={{ marginBottom: '4px' }}>
+            <span style={{ color: '#888' }}>ENV:</span>{' '}
+            <span style={{ color: inDespia ? '#0f0' : '#ff0' }}>
+              {inDespia ? 'Despia' : 'Web'}
+            </span>
           </div>
-        ))}
-      </div>
 
-      {/* Page Transforms */}
-      <div style={{ marginBottom: '6px' }}>
-        <div style={{ color: '#888', marginBottom: '2px' }}>Transforms:</div>
-        {pageTransforms.map((pt, i) => (
-          <div key={i} style={{ 
-            color: pt.includes('x:0') || pt.includes('none') ? '#0f0' : '#f93',
-            fontSize: '9px',
-            marginLeft: '8px',
-          }}>
-            {pt}
+          {/* Gesture State */}
+          <div style={{ marginBottom: '4px' }}>
+            <span style={{ color: '#888' }}>Gesture:</span>{' '}
+            <span style={{ color: gestureColors[gestureState] }}>
+              {gestureState}
+            </span>
           </div>
-        ))}
-      </div>
 
-      {/* Event Log */}
-      <div>
-        <div style={{ color: '#888', marginBottom: '2px' }}>Events:</div>
-        <div style={{ 
-          maxHeight: '80px', 
-          overflow: 'auto',
-          background: 'rgba(255,255,255,0.1)',
-          padding: '4px',
-          borderRadius: '4px',
-        }}>
-          {eventLog.length === 0 ? (
-            <div style={{ color: '#666' }}>No events yet</div>
-          ) : (
-            eventLog.map((event, i) => (
+          {/* Router State */}
+          <div style={{ marginBottom: '4px' }}>
+            <span style={{ color: '#888' }}>trans:</span>{' '}
+            <span style={{ color: routerTransitioning ? '#f33' : '#0f0' }}>
+              {String(routerTransitioning)}
+            </span>
+            {' '}
+            <span style={{ color: '#888' }}>allow:</span>{' '}
+            <span style={{ color: allowPageChange ? '#0f0' : '#f33' }}>
+              {String(allowPageChange)}
+            </span>
+          </div>
+
+          <div style={{ marginBottom: '4px' }}>
+            <span style={{ color: '#888' }}>opacity:</span>{' '}
+            <span style={{ color: hasOpacityEffect ? '#f33' : '#0f0' }}>
+              {String(hasOpacityEffect)}
+            </span>
+          </div>
+
+          {/* Route Info */}
+          <div style={{ marginBottom: '4px' }}>
+            <span style={{ color: '#888' }}>URL:</span>{' '}
+            <span style={{ color: '#0af', wordBreak: 'break-all' }}>{currentUrl.slice(0, 25)}</span>
+          </div>
+
+          {/* History Stack */}
+          <div style={{ marginBottom: '4px' }}>
+            <div style={{ color: '#888', marginBottom: '2px' }}>History ({historyStack.length}):</div>
+            <div style={{ 
+              background: 'rgba(255,255,255,0.05)',
+              padding: '2px 4px',
+              borderRadius: '2px',
+              fontSize: '8px',
+            }}>
+              {historyStack.map((h, i) => (
+                <div key={i} style={{ color: i === historyStack.length - 1 ? '#0f0' : '#666' }}>
+                  {i}: {h.slice(0, 20)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Page Classes */}
+          <div>
+            <div style={{ color: '#888', marginBottom: '2px' }}>Pages:</div>
+            {pageClasses.map((pc, i) => (
               <div key={i} style={{ 
-                color: event.includes('TRANSITIONEND') ? '#f0f' :
-                       event.includes('ANIMATIONEND') ? '#f0f' :
-                       event.includes('TOUCHEND') ? '#ff0' :
-                       event.includes('POPSTATE') ? '#0f0' : 
-                       event.includes('CLICK') ? '#0af' :
-                       event.includes('swipeback') ? '#f93' : 
-                       event.includes('TOUCH edge') ? '#0ff' : '#aaa',
-                fontSize: '9px',
-                fontWeight: event.includes('TRANSITIONEND') ? 'bold' : 'normal',
+                color: pc.includes('transitioning') || pc.includes('swipe') ? '#f93' : 
+                       pc.includes('page-current') ? '#0f0' : 
+                       pc.includes('page-previous') ? '#f90' : '#aaa',
+                fontSize: '8px',
               }}>
-                {event}
+                {pc}
               </div>
-            ))
-          )}
+            ))}
+          </div>
+        </div>
+
+        {/* Right Column - Logs */}
+        <div style={{ flex: 1, minWidth: '140px' }}>
+          {/* Event Log */}
+          <div style={{ marginBottom: '6px' }}>
+            <div style={{ color: '#888', marginBottom: '2px' }}>Events:</div>
+            <div style={{ 
+              maxHeight: '90px', 
+              overflow: 'auto',
+              background: 'rgba(255,255,255,0.05)',
+              padding: '3px',
+              borderRadius: '3px',
+            }}>
+              {eventLog.length === 0 ? (
+                <div style={{ color: '#444' }}>No events</div>
+              ) : (
+                eventLog.map((event, i) => (
+                  <div key={i} style={{ 
+                    color: event.includes('POPSTATE') ? '#f0f' : 
+                           event.includes('CLICK') ? '#0af' :
+                           event.includes('TOUCH') ? '#ff0' :
+                           event.includes('swipeback') ? '#f93' : 
+                           event.includes('route') ? '#0f0' :
+                           event.includes('page') ? '#aaa' : '#666',
+                    fontSize: '8px',
+                  }}>
+                    {event}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Cleanup Log */}
+          <div>
+            <div style={{ color: '#888', marginBottom: '2px' }}>Cleanup:</div>
+            <div style={{ 
+              maxHeight: '70px', 
+              overflow: 'auto',
+              background: 'rgba(255,255,255,0.05)',
+              padding: '3px',
+              borderRadius: '3px',
+            }}>
+              {cleanupLog.length === 0 ? (
+                <div style={{ color: '#444' }}>No cleanup</div>
+              ) : (
+                cleanupLog.map((log, i) => (
+                  <div key={i} style={{ 
+                    color: log.includes('Removed') || log.includes('Fixed') ? '#0f0' : 
+                           log.includes('Starting') ? '#0af' :
+                           log.includes('complete') ? '#0f0' : '#aaa',
+                    fontSize: '8px',
+                  }}>
+                    {log}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
