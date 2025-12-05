@@ -78,7 +78,7 @@ const setupSwipeBackFix = () => {
 };
 
 /**
- * Check if navigation is currently blocked
+ * Check if navigation is currently blocked or in a broken state
  */
 const isNavigationBlocked = (view) => {
   const router = view?.router;
@@ -89,8 +89,12 @@ const isNavigationBlocked = (view) => {
   const hasTransitioningPages = !!document.querySelector('.page-transitioning-swipeback');
   const allowPageChange = router.allowPageChange !== false;
   const transitioning = router.transitioning === true;
+  
+  // Also check for lingering page-previous on the main view (indicates broken state)
+  const mainPage = document.querySelector('.view-main .page.main-view-page');
+  const mainPageHasPrevious = mainPage?.classList.contains('page-previous') || false;
 
-  return hasOpacityEffect || hasTransitioningPages || !allowPageChange || transitioning;
+  return hasOpacityEffect || hasTransitioningPages || !allowPageChange || transitioning || mainPageHasPrevious;
 };
 
 /**
@@ -101,6 +105,7 @@ const isNavigationBlocked = (view) => {
  * - Destination page keeps page-previous class instead of page-current
  * - Router URL doesn't update to match actual page
  * - page-swipeback-active class lingers
+ * - main-view-page specifically retains page-previous after animation
  */
 const cleanupAfterSwipeBack = (view) => {
   console.log('[SwipeFix] Starting cleanup...');
@@ -118,7 +123,6 @@ const cleanupAfterSwipeBack = (view) => {
   if (pages.length > 1) {
     // The page we're going BACK to is the first/underlying page (index 0)
     // The page being DISMISSED is the top page (last index)
-    const destinationPage = pages[0];
     const dismissedPages = pages.slice(1);
 
     // Remove all dismissed pages
@@ -131,6 +135,9 @@ const cleanupAfterSwipeBack = (view) => {
   // 3. Fix ALL remaining pages - ensure exactly one is page-current
   const remainingPages = Array.from(document.querySelectorAll('.view-main .page'));
   remainingPages.forEach((page, index) => {
+    // Log current state before cleanup
+    console.log('[SwipeFix] Page classes before:', page.className);
+    
     // Remove ALL state classes first
     page.classList.remove(
       'page-previous',
@@ -150,9 +157,28 @@ const cleanupAfterSwipeBack = (view) => {
     // Clear inline styles
     page.style.transform = '';
     page.style.opacity = '';
+    
+    // Log current state after cleanup
+    console.log('[SwipeFix] Page classes after:', page.className);
   });
 
-  // 4. Reset router state - FORCE these values
+  // 4. SPECIFICALLY fix .main-view-page if it still has page-previous
+  // (This is the root cause of tabs being unreachable)
+  const mainViewPage = document.querySelector('.main-view-page');
+  if (mainViewPage) {
+    const hadPrevious = mainViewPage.classList.contains('page-previous');
+    mainViewPage.classList.remove('page-previous', 'page-next', 'page-transitioning', 'page-transitioning-swipeback', 'page-swipeback-active');
+    if (!mainViewPage.classList.contains('page-current')) {
+      mainViewPage.classList.add('page-current');
+    }
+    mainViewPage.style.transform = '';
+    mainViewPage.style.opacity = '';
+    if (hadPrevious) {
+      console.log('[SwipeFix] Fixed main-view-page: removed page-previous, added page-current');
+    }
+  }
+
+  // 5. Reset router state - FORCE these values
   if (view.router) {
     // Force reset transitioning state
     view.router.transitioning = false;
@@ -186,10 +212,17 @@ const cleanupAfterSwipeBack = (view) => {
         view.router.allowPageChange = true;
         view.router.transitioning = false;
       }
-    }, 50);
+      // Also re-check main-view-page
+      const mvp = document.querySelector('.main-view-page');
+      if (mvp && mvp.classList.contains('page-previous')) {
+        mvp.classList.remove('page-previous');
+        mvp.classList.add('page-current');
+        console.log('[SwipeFix] Secondary fix for main-view-page');
+      }
+    }, 100);
   }
 
-  // 5. Clear view-level transition classes
+  // 6. Clear view-level transition classes
   if (view.el) {
     view.el.classList.remove(
       'router-transition-forward', 

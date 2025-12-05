@@ -56,21 +56,17 @@ body,
    Fix for z-index stacking after swipe-back
    ============================================
    After swipe-back, both page-previous and page-current
-   exist in DOM. Without proper z-index, page-previous
-   blocks clicks to page-current elements.
+   can exist in DOM with same z-index, blocking clicks.
+   Ensure page-current is always on top.
    ============================================ */
-.page-previous {
+.view-main .page.page-previous {
   z-index: 0 !important;
   pointer-events: none !important;
 }
 
-.page-current {
+.view-main .page.page-current {
   z-index: 1 !important;
-}
-
-/* Ensure page-next (during forward navigation) is on top */
-.page-next {
-  z-index: 2 !important;
+  pointer-events: auto !important;
 }
 
 /* ============================================
