@@ -105,15 +105,56 @@ const isNavigationBlocked = (view) => {
 
 /**
  * Cleanup after swipe-back completes.
- * 
- * Since F7's swipebackAfterChange never fires in Despia, it never:
- * 1. Removes the dismissed page from DOM
- * 2. Pops the dismissed route from history
- * 
- * We need to do BOTH manually.
+ *
+ * ROOT CAUSE: F7's swipeback uses a closure variable `allowViewTouchMove` that gets
+ * set to `false` when swipe completes (line 183 in swipe-back.js) and only resets to
+ * `true` inside a transitionEnd callback (line 213). If transitionEnd never fires
+ * (Despia WebView issue), this variable stays false and blocks ALL future swipe-backs.
+ *
+ * SOLUTION: Dispatch a synthetic transitionend event on the transitioning page element.
+ * This triggers F7's internal callback which resets `allowViewTouchMove = true`.
  */
 const cleanupAfterSwipeBack = (view) => {
   console.log('[SwipeFix] Cleanup starting...');
+
+  // CRITICAL FIX: Dispatch transitionend event to unlock F7's internal allowViewTouchMove
+  // F7 listens for transitionend on $currentPageEl (the page being swiped away).
+  // After swipe completes, this page has classes: page-next + page-transitioning-swipeback
+  // (See swipe-back.js lines 169 and 177)
+  const dismissedPage = document.querySelector('.view-main .page.page-next.page-transitioning-swipeback');
+  if (dismissedPage) {
+    console.log('[SwipeFix] Dispatching transitionend to unlock allowViewTouchMove');
+    const transitionEndEvent = new TransitionEvent('transitionend', {
+      propertyName: 'transform',
+      bubbles: true,
+      cancelable: false,
+    });
+    dismissedPage.dispatchEvent(transitionEndEvent);
+
+    // Give F7's handler time to process before we do additional cleanup
+    // F7's transitionEnd callback will reset allowViewTouchMove and allowPageChange
+    console.log('[SwipeFix] transitionend dispatched, F7 should now reset internal state');
+  } else {
+    // Try alternate selector - page might just have page-transitioning-swipeback without page-next
+    const altPage = document.querySelector('.view-main .page.page-transitioning-swipeback');
+    if (altPage) {
+      console.log('[SwipeFix] Dispatching transitionend (alt selector)');
+      const transitionEndEvent = new TransitionEvent('transitionend', {
+        propertyName: 'transform',
+        bubbles: true,
+        cancelable: false,
+      });
+      altPage.dispatchEvent(transitionEndEvent);
+    } else {
+      console.log('[SwipeFix] No transitioning page found, doing manual cleanup');
+      // Fallback: if no transitioning page, we still need to reset router flags
+      if (view.router) {
+        view.router.transitioning = false;
+        view.router.allowPageChange = true;
+        view.router.swipeBackActive = false;
+      }
+    }
+  }
 
   // 1. Remove page-opacity-effect elements (these block all touch events!)
   const opacityEffects = document.querySelectorAll('.page-opacity-effect');
@@ -122,86 +163,31 @@ const cleanupAfterSwipeBack = (view) => {
     console.log('[SwipeFix] Removed', opacityEffects.length, 'opacity effects');
   }
 
-  // 2. Remove dismissed pages from DOM
-  const pages = Array.from(document.querySelectorAll('.view-main .page'));
-  const currentPage = document.querySelector('.view-main .page.page-current');
-  let removedPages = 0;
-  
-  if (currentPage && pages.length > 1) {
-    pages.forEach((page) => {
-      if (page !== currentPage) {
-        console.log('[SwipeFix] Removing dismissed page:', page.className.slice(0, 50));
-        page.remove();
-        removedPages++;
-      }
-    });
-  }
+  // 2. Clear stuck transition classes from pages
+  // Do this AFTER dispatching transitionend so F7 can process first
+  document.querySelectorAll('.view-main .page').forEach((page) => {
+    page.classList.remove(
+      'page-transitioning',
+      'page-transitioning-swipeback',
+      'page-swipeback-active'
+    );
+  });
 
-  // 3. Pop history entries for removed pages
-  // F7 normally does this in swipebackAfterChange, but that never fires
-  if (view.router && removedPages > 0) {
-    const historyBefore = view.router.history.length;
-    
-    // Pop one entry for each removed page
-    for (let i = 0; i < removedPages; i++) {
-      if (view.router.history.length > 1) {
-        view.router.history.pop();
-      }
-    }
-    
-    console.log('[SwipeFix] Popped history:', historyBefore, '→', view.router.history.length);
-    
-    // Update currentRoute to match the new top of history
-    const newCurrentUrl = view.router.history[view.router.history.length - 1];
-    const matchingRoute = view.router.findMatchingRoute(newCurrentUrl);
-    if (matchingRoute) {
-      view.router.currentRoute = matchingRoute;
-      view.router.previousRoute = null;
-      console.log('[SwipeFix] Updated currentRoute to:', newCurrentUrl);
-    }
-  }
-
-  // 4. Reset ALL router flags including swipeback state
-  if (view.router) {
-    // Basic navigation flags
-    view.router.transitioning = false;
-    view.router.allowPageChange = true;
-    
-    // CRITICAL: Reset swipeback-specific state
-    // Without this, F7 thinks swipeback is still in progress and blocks future swipes
-    view.router.swipeBackActive = false;
-    view.router.swipeBackPage = undefined;
-    view.router.swipeBackPreviousPage = undefined;
-    
-    console.log('[SwipeFix] Reset router flags + swipeback state');
-    
-    // Double-check after a delay
-    setTimeout(() => {
-      if (view.router) {
-        view.router.transitioning = false;
-        view.router.allowPageChange = true;
-        view.router.swipeBackActive = false;
-      }
-    }, 100);
-  }
-
-  // 5. Clear view-level transition classes
+  // 3. Clear view-level transition classes
   if (view.el) {
     view.el.classList.remove(
-      'router-transition-forward', 
+      'router-transition-forward',
       'router-transition-backward',
       'router-transition'
     );
   }
 
-  // 6. Clear stuck transition classes from remaining pages
-  document.querySelectorAll('.view-main .page').forEach((page) => {
-    page.classList.remove(
-      'page-transitioning', 
-      'page-transitioning-swipeback',
-      'page-swipeback-active'
-    );
-  });
+  // Note: We no longer manually remove pages or pop history here.
+  // The synthetic transitionend event triggers F7's own cleanup which handles:
+  // - Removing the dismissed page (router.removePage)
+  // - Popping history (router.history.pop)
+  // - Emitting swipebackAfterChange
+  // This is cleaner and more reliable than duplicating F7's logic.
 
   console.log('[SwipeFix] Cleanup complete, history length:', view.router?.history.length);
 };
