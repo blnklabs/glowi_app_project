@@ -161,17 +161,26 @@ const cleanupAfterSwipeBack = (view) => {
     }
   }
 
-  // 4. Reset router flags
+  // 4. Reset ALL router flags including swipeback state
   if (view.router) {
+    // Basic navigation flags
     view.router.transitioning = false;
     view.router.allowPageChange = true;
-    console.log('[SwipeFix] Reset router flags');
+    
+    // CRITICAL: Reset swipeback-specific state
+    // Without this, F7 thinks swipeback is still in progress and blocks future swipes
+    view.router.swipeBackActive = false;
+    view.router.swipeBackPage = undefined;
+    view.router.swipeBackPreviousPage = undefined;
+    
+    console.log('[SwipeFix] Reset router flags + swipeback state');
     
     // Double-check after a delay
     setTimeout(() => {
       if (view.router) {
         view.router.transitioning = false;
         view.router.allowPageChange = true;
+        view.router.swipeBackActive = false;
       }
     }, 100);
   }
