@@ -46,15 +46,23 @@ const setupSwipeBackFix = () => {
     view.on('swipebackBeforeChange', () => {
       if (cleanupScheduled) return;
       cleanupScheduled = true;
-      
+
       console.log('[SwipeFix] swipebackBeforeChange fired, scheduling cleanup');
-      
-      // Wait for animation to complete (350ms F7 default + buffer)
+
+      // Wait for swipeback animation to complete (300ms per F7 CSS) + buffer
+      // Then check if cleanup is actually needed
       setTimeout(() => {
-        console.log('[SwipeFix] Running cleanup after swipebackBeforeChange');
+        console.log('[SwipeFix] Running cleanup check after swipebackBeforeChange');
         cleanupAfterSwipeBack(view);
         cleanupScheduled = false;
-      }, 400);
+      }, 350);
+    });
+
+    // SAFETY NET: Also listen for swipebackAfterChange to clear our flag
+    // If this fires, F7 handled it naturally and we don't need to do anything
+    view.on('swipebackAfterChange', () => {
+      console.log('[SwipeFix] swipebackAfterChange fired - F7 handled naturally');
+      cleanupScheduled = false;
     });
 
     // BACKUP TRIGGER: touchend after swipebackMove (in case swipebackBeforeChange doesn't fire)
@@ -117,6 +125,13 @@ const isNavigationBlocked = (view) => {
 const cleanupAfterSwipeBack = (view) => {
   console.log('[SwipeFix] Cleanup starting...');
 
+  // Check if cleanup is actually needed - F7 might have handled it naturally
+  const router = view.router;
+  if (router && router.allowPageChange === true) {
+    console.log('[SwipeFix] allowPageChange is true, F7 handled cleanup naturally');
+    return;
+  }
+
   // CRITICAL FIX: Dispatch transitionend event to unlock F7's internal allowViewTouchMove
   // F7 listens for transitionend on $currentPageEl (the page being swiped away).
   // After swipe completes, this page has classes: page-next + page-transitioning-swipeback
@@ -130,50 +145,45 @@ const cleanupAfterSwipeBack = (view) => {
       cancelable: false,
     });
     dismissedPage.dispatchEvent(transitionEndEvent);
-
-    // Give F7's handler time to process before we do additional cleanup
-    // F7's transitionEnd callback will reset allowViewTouchMove and allowPageChange
     console.log('[SwipeFix] transitionend dispatched, F7 should now reset internal state');
-  } else {
-    // Try alternate selector - page might just have page-transitioning-swipeback without page-next
-    const altPage = document.querySelector('.view-main .page.page-transitioning-swipeback');
-    if (altPage) {
-      console.log('[SwipeFix] Dispatching transitionend (alt selector)');
-      const transitionEndEvent = new TransitionEvent('transitionend', {
-        propertyName: 'transform',
-        bubbles: true,
-        cancelable: false,
-      });
-      altPage.dispatchEvent(transitionEndEvent);
-    } else {
-      console.log('[SwipeFix] No transitioning page found, doing manual cleanup');
-      // Fallback: if no transitioning page, we still need to reset router flags
-      if (view.router) {
-        view.router.transitioning = false;
-        view.router.allowPageChange = true;
-        view.router.swipeBackActive = false;
-      }
-    }
+    // F7's callback will handle everything else - don't interfere
+    return;
   }
 
-  // 1. Remove page-opacity-effect elements (these block all touch events!)
+  // Try alternate selector - page might just have page-transitioning-swipeback without page-next
+  const altPage = document.querySelector('.view-main .page.page-transitioning-swipeback');
+  if (altPage) {
+    console.log('[SwipeFix] Dispatching transitionend (alt selector)');
+    const transitionEndEvent = new TransitionEvent('transitionend', {
+      propertyName: 'transform',
+      bubbles: true,
+      cancelable: false,
+    });
+    altPage.dispatchEvent(transitionEndEvent);
+    console.log('[SwipeFix] transitionend dispatched (alt), F7 should handle cleanup');
+    return;
+  }
+
+  // FALLBACK: No transitioning page found, do manual cleanup
+  // This happens if the page classes were already cleared somehow
+  console.log('[SwipeFix] No transitioning page found, doing manual cleanup');
+
+  // Remove page-opacity-effect elements (these block all touch events!)
   const opacityEffects = document.querySelectorAll('.page-opacity-effect');
   if (opacityEffects.length > 0) {
     opacityEffects.forEach((el) => el.remove());
     console.log('[SwipeFix] Removed', opacityEffects.length, 'opacity effects');
   }
 
-  // 2. Clear stuck transition classes from pages
-  // Do this AFTER dispatching transitionend so F7 can process first
-  document.querySelectorAll('.view-main .page').forEach((page) => {
-    page.classList.remove(
-      'page-transitioning',
-      'page-transitioning-swipeback',
-      'page-swipeback-active'
-    );
-  });
+  // Reset router flags
+  if (router) {
+    router.transitioning = false;
+    router.allowPageChange = true;
+    router.swipeBackActive = false;
+    console.log('[SwipeFix] Reset router flags manually');
+  }
 
-  // 3. Clear view-level transition classes
+  // Clear view-level transition classes
   if (view.el) {
     view.el.classList.remove(
       'router-transition-forward',
@@ -182,14 +192,7 @@ const cleanupAfterSwipeBack = (view) => {
     );
   }
 
-  // Note: We no longer manually remove pages or pop history here.
-  // The synthetic transitionend event triggers F7's own cleanup which handles:
-  // - Removing the dismissed page (router.removePage)
-  // - Popping history (router.history.pop)
-  // - Emitting swipebackAfterChange
-  // This is cleaner and more reliable than duplicating F7's logic.
-
-  console.log('[SwipeFix] Cleanup complete, history length:', view.router?.history.length);
+  console.log('[SwipeFix] Manual cleanup complete, history length:', router?.history.length);
 };
 
 /**
